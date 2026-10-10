@@ -191,6 +191,9 @@ import examples as EX  # noqa: E402  (space/examples.py + static/examples.*)
 # --- LANE VIZ ---
 import viz  # noqa: E402  (space/viz.py + static/viz.*)
 # --- /LANE VIZ ---
+# --- LANE BENCH ---
+import bench  # noqa: E402  (space/bench/ package: __init__ = UI/runner/board, jev.py scoring, tasks/, published/; static/bench.*)
+# --- /LANE BENCH ---
 
 STATIC = Path(__file__).parent / "static"
 
@@ -681,10 +684,32 @@ JS += "\n" + EX.js()
 CSS += "\n" + _static("viz.css")
 JS += "\n" + _static("viz.js")
 # --- /LANE VIZ ---
+# --- LANE BENCH ---
+CSS += "\n" + bench.css()
+JS += "\n" + bench.js()
+# --- /LANE BENCH ---
 
 GOLDEN_Q = [("noul", "Does this convey urgency?", []),
             ("choice", "Which team should handle this?", ["billing", "sales", "retail"]),
             ("score", "How frustrated is the writer?", ["calm", "frustrated", "depressed"])]
+
+
+# --- LANE BENCH ---  (module-level helpers used by the Bench section inside build_ui)
+_BENCH_LABELS: dict[str, str] = {}
+
+
+def bench_estimate_html(names: list[str], scope_v: str, model_v: str, started: bool = False) -> str:
+    """Wall-time estimate shown before a run, from measured medians when there are any (bench.estimate_s)."""
+    if not _BENCH_LABELS:
+        _BENCH_LABELS.update({m.name: model_label(m) for m in REGISTRY})
+    ms = names if model_v == "all public models" else [model_v]
+    tier_v = scope_v.split(":", 1)[1].strip() if scope_v.startswith("tier:") else None
+    n = len(bench.task_ids(tier_v))
+    secs, src = bench.estimate_s(ms, n, runner.default_device())
+    lead = "started · " if started else ""
+    return (f'<div class="sdp sdb-est">{lead}{n} tasks × {len(ms)} model{"s" if len(ms) != 1 else ""} = {n * len(ms)} calls · '
+            f'about {bench._fmt_s(secs)} on {E(runner.default_device())} ({E(src)}) · one locked model call at a time</div>')
+# --- /LANE BENCH ---
 
 
 def make_theme() -> gr.themes.Base:
@@ -757,6 +782,13 @@ def build_ui() -> gr.Blocks:
         gr.HTML(EX.gallery_html(), elem_classes=["sdp-plain"], elem_id="sdx-gallery-host")
         ex_pick = gr.Textbox(value="", visible=True, elem_id="sdx-pick", container=False, show_label=False,
                              elem_classes=["sdx-hidden"])  # 1x1 px via CSS; JS writes "<example-id>#<nonce>" here
+        # --- LANE BENCH ---  (JevBench picker: click a task -> fills the ask bar + runs; gold shown only after the answers)
+        gr.HTML('<div class="sdp sdp-section" id="sdb-head"><h2>JevBench</h2><span class="sub">231 public tasks, straight from the benchmark — pick one, or run them all below</span></div>',
+                elem_classes=["sdp-plain"])
+        gr.HTML(bench.picker_html(), elem_classes=["sdp-plain"], elem_id="sdb-picker-host")
+        bench_pick = gr.Textbox(value="", visible=True, elem_id="sdb-pick", container=False, show_label=False, elem_classes=["sdb-hidden"])
+        bench_tid = gr.State("")  # the JevBench task the ask bar currently holds ("" = a free question)
+        # --- /LANE BENCH ---
 
 
         status = gr.HTML(status_html("", "Ready."), elem_classes=["sdp-plain"])
@@ -766,11 +798,39 @@ def build_ui() -> gr.Blocks:
         gr.HTML('<div class="sdp sdp-section"><h2>Models</h2><span class="sub">labelled by base and LoRA rank — the digits in a repo name are not a size</span></div>',
                 elem_classes=["sdp-plain"])
         cards = gr.HTML(grid_html([], REGISTRY, [], [], None).replace("queued", "idle"), elem_classes=["sdp-plain"])
+        # --- LANE BENCH ---  (gold answer + JevBench score per model, rendered from `raw` AFTER the models answered)
+        bench_gold = gr.HTML("", elem_classes=["sdp-plain"], elem_id="sdb-gold")
+        # --- /LANE BENCH ---
         # --- LANE VIZ ---  (animated SVG decision diagrams; re-rendered from the result dict via raw.change below)
         gr.HTML('<div class="sdp sdp-section" id="sdp-viz-head"><h2>Decisions</h2><span class="sub">every decider on one diagram — same choice, different certainty</span></div>',
                 elem_classes=["sdp-plain"])
         viz_out = gr.HTML("", elem_classes=["sdp-plain"], elem_id="sdp-viz")
         # --- /LANE VIZ ---
+        # --- LANE BENCH ---  (run the bench + the activity board + common errors; see bench/__init__.py)
+        _BENCH_LABELS.update({m.name: model_label(m) for m in REGISTRY})
+        gr.HTML('<div class="sdp sdp-section" id="sdb-board-head"><h2>JevBench board</h2><span class="sub">task × model — accent = correct, ink = wrong, opacity = how sure · published runs from the strands-decider repo are the italic rows</span></div>',
+                elem_classes=["sdp-plain"])
+        with gr.Row(elem_classes=["sdb-controls"]):
+            bench_scope = gr.Dropdown(choices=["full JevBench (231)", "tier: easy", "tier: standard", "tier: hard"], value="full JevBench (231)",
+                                      label="Scope", scale=2)
+            bench_model = gr.Dropdown(choices=["all public models"] + names, value="all public models", label="Models", scale=2)
+            bench_run = gr.Button("Run JevBench", variant="primary", elem_id="sdb-run", scale=1)
+            bench_cancel = gr.Button("Cancel", scale=1)
+            bench_hist = gr.Checkbox(value=False, label="show 32 correct-only history runs", scale=2)
+        with gr.Row(elem_classes=["sdb-controls"]):
+            bench_sched_on = gr.Checkbox(value=False, label="repeat daily (UTC)", scale=1)
+            bench_sched_at = gr.Textbox(value="03:00", label="at HH:MM UTC", max_lines=1, scale=1)
+            bench_est = gr.HTML(bench_estimate_html(names, "full JevBench (231)", "all public models"), elem_classes=["sdp-plain"])
+        bench_board = gr.HTML(bench.board_html(bench.latest(), _BENCH_LABELS), elem_classes=["sdp-plain"], elem_id="sdb-board")
+        bench_detail_pick = gr.Textbox(value="", visible=True, elem_id="sdb-detail", container=False, show_label=False, elem_classes=["sdb-hidden"])
+        bench_detail = gr.HTML('<div class="sdp sdb-dim">click a column (or a task in the error panels) for the task detail — state, question, every model\'s answer side by side</div>',
+                               elem_classes=["sdp-plain"], elem_id="sdb-detail-out")
+        gr.HTML('<div class="sdp sdp-section"><h2>Common errors</h2><span class="sub">only what can be counted — per model, per task, models × tiers, and the paired McNemar test strands-decider itself uses</span></div>',
+                elem_classes=["sdp-plain"])
+        bench_errors = gr.HTML(bench.errors_html(bench.latest(), _BENCH_LABELS), elem_classes=["sdp-plain"], elem_id="sdb-errors")
+        bench_sig = gr.State("")
+        bench_timer = gr.Timer(3.0, active=True)
+        # --- /LANE BENCH ---
         with gr.Accordion("Raw result — every number on this page comes from here", open=False):
             raw = gr.JSON(value=None)
         # --- LANE LANDING ---  (how-to-use / install CTA + footer; replace footer_html() with yours if you own the footer —
@@ -892,6 +952,83 @@ def build_ui() -> gr.Blocks:
 
         raw.change(_viz, [raw], [viz_out])
         # --- /LANE VIZ ---
+
+        # --- LANE BENCH ---  (handlers; every model call goes through answer() exactly like the Decide button)
+        def _fill_task(raw_id: str):
+            tid = (raw_id or "").split("#", 1)[0].strip()
+            f = bench.fill_values(tid)
+            if f is None:
+                return [gr.update()] * (5 + (MAX_QUESTIONS - 1) * 4 + 2) + [""]
+            out = [f["state"], f["type"], f["instructions"], gr.update(choices=f["options"], value=f["options"]), 1]
+            out += [gr.update(visible=False) for _ in range(MAX_QUESTIONS - 1)]
+            for _ in range(1, MAX_QUESTIONS):
+                out += ["noul", "", gr.update(choices=[], value=[])]
+            out += [None, gr.update(value=names)]  # no image; every public model, like the bench itself
+            return out + [tid]
+
+        bench_pick.input(_fill_task, [bench_pick], _ex_outputs + [bench_tid]).then(
+            _run_stream, [state, image, models, hardware, q1type, q1ins, q1opts, nq] + qtypes + qinstr + qopts,
+            [status, compare, cards, raw])
+        # a free question (Decide / example / golden) clears the task id so no gold card is shown for it
+        run.click(lambda: "", None, bench_tid)
+        ex_pick.input(lambda: "", None, bench_tid)
+        golden.click(lambda: "", None, bench_tid)
+        clear.click(lambda: "", None, bench_tid)
+
+        def _gold(result, tid):
+            try:
+                return bench.gold_html(tid, result) if result and tid else ""
+            except Exception as e:  # noqa: BLE001
+                return f'<div class="sdp sdb-dim">bench scoring error: {E(f"{type(e).__name__}: {e}")}</div>'
+
+        raw.change(_gold, [raw, bench_tid], [bench_gold])
+
+        def _bench_models(model_v):
+            return names if model_v == "all public models" else [model_v]
+
+        def _bench_tier(scope_v):
+            return scope_v.split(":", 1)[1].strip() if scope_v.startswith("tier:") else None
+
+        def _bench_start(scope_v, model_v):
+            j = bench.start_run(answer, _bench_models(model_v), _bench_tier(scope_v), label=f"{scope_v} · {model_v}")
+            if isinstance(j, str):
+                return gr.update(), f'<div class="sdp sdb-est">{E(j)}</div>'
+            return bench.board_html(j, _BENCH_LABELS), bench_estimate_html(names, scope_v, model_v, started=True)
+
+        bench_run.click(_bench_start, [bench_scope, bench_model], [bench_board, bench_est])
+        bench_cancel.click(lambda: (bench.cancel_live(), bench.board_html(bench.latest(), _BENCH_LABELS))[1], None, bench_board)
+        bench_scope.change(lambda sc, mo: bench_estimate_html(names, sc, mo), [bench_scope, bench_model], bench_est)
+        bench_model.change(lambda sc, mo: bench_estimate_html(names, sc, mo), [bench_scope, bench_model], bench_est)
+
+        def _bench_tick(sig, hist):
+            j = bench.latest()
+            new = f"{j.run_id if j else ''}:{j.done if j else 0}:{int(bool(j and j.running()))}:{int(bool(hist))}:{(j.push.get('status') if j else '')}"
+            if new == sig:
+                return gr.update(), gr.update(), sig
+            errs = gr.update() if (j and j.running() and j.done % 7) else bench.errors_html(j, _BENCH_LABELS)
+            return bench.board_html(j, _BENCH_LABELS, show_history=bool(hist)), errs, new
+
+        bench_timer.tick(_bench_tick, [bench_sig, bench_hist], [bench_board, bench_errors, bench_sig])
+        bench_hist.change(lambda h: bench.board_html(bench.latest(), _BENCH_LABELS, show_history=bool(h)), [bench_hist], bench_board)
+
+        def _bench_detail(raw_id: str):
+            tid = (raw_id or "").split("#", 1)[0].strip()
+            return bench.task_detail_html(tid, bench.latest(), _BENCH_LABELS) or gr.update()
+
+        bench_detail_pick.input(_bench_detail, [bench_detail_pick], [bench_detail])
+
+        def _bench_sched(on, at):
+            try:
+                st = bench.set_schedule(bool(on), at or "03:00", answer, names)
+            except Exception as e:  # noqa: BLE001
+                return f'<div class="sdp sdb-est">schedule error: {E(e)}</div>'
+            nxt = time.strftime("%Y-%m-%d %H:%MZ", time.gmtime(st["next"])) if st.get("next") else "off"
+            return (f'<div class="sdp sdb-est">daily run: {"on" if st["enabled"] else "off"} · next {nxt} · '
+                    f'persisted: {E(st.get("persisted", "no HF_TOKEN"))} · honest note: a thread timer fires only while this process is up — '
+                    f'a sleeping Space will not fire it (this a100 Space does not sleep unless configured to)</div>')
+
+        bench_sched_on.change(_bench_sched, [bench_sched_on, bench_sched_at], bench_est)
+        # --- /LANE BENCH ---
 
     return demo
 
