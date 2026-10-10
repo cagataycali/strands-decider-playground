@@ -1,0 +1,31 @@
+# Pinned to the exact versions the golden numbers in the README were measured on.
+
+# The decider library, at the commit that loads every public checkpoint (the PyPI 0.1.0
+# release predates the Gemma 4 configs). [vision] adds Pillow for image input.
+strands-decider[vision] @ git+https://github.com/strands-labs/strands-decider@0ac22a97e584f3ccf87cc9b8cc5fdbad57cdf534
+
+# JevBench scoring code, at the commit the vendored tasks in bench/tasks/ were taken from.
+jevbench @ git+https://github.com/fstandhartinger/jevbench@1bcc55eb6c8cffde2306b3db03ede39b61c6152a
+
+# Resolved as dependencies of the above, pinned to what ran:
+torch==2.14.1
+transformers==5.19.0          # vision input needs >= 5.18
+peft==0.21.2
+accelerate==1.15.0
+safetensors==0.8.0
+tokenizers==0.23.3
+huggingface_hub==2.2.0
+pillow==12.3.0
+
+# Fast kernel for the Qwen3.5 torsos' 18 gated-delta-net layers (chunk_gated_delta_rule).
+# Pure-Python Triton package; torch 2.14.1 already ships the Triton it needs. Without it
+# transformers runs its reference PyTorch path ("correct but much slower"). causal_conv1d has
+# no torch-2.14 build anywhere (wheels or Hub kernels), so that one stays on the reference path.
+flash-linear-attention==0.5.2
+fla-core==0.5.2
+einops==0.8.2
+
+# App:
+gradio==6.30.0
+pandas==2.3.3
+psutil==7.2.2                 # metrics.py: RSS peak sampling on cpu/mps
