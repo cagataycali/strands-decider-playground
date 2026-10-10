@@ -222,6 +222,16 @@ def _tip(label: str, key: str) -> str:
     return f'<span class="sdp-tip" tabindex="0" data-tip="{E(TIPS.get(key, ""))}">{E(label)}</span>'
 
 
+def _fmt(v: Any, nd: int = 4) -> str:
+    if isinstance(v, bool) or v is None:
+        return "—" if v is None else str(v)
+    if isinstance(v, int):
+        return f"{v:,}"
+    if isinstance(v, float):
+        return f"{v:.{nd}f}"
+    return str(v)
+
+
 def _num(v: Any) -> bool:
     return isinstance(v, (int, float)) and not isinstance(v, bool)
 
@@ -343,28 +353,28 @@ def answers_html(card: dict, specs: list[dict], qids: list[str]) -> str:
 
 
 def memory_stack_svg(m: dict) -> str:
-    """Horizontal stacked bands: weights (within baseline) -> baseline -> peak; activation = peak - baseline."""
+    """Horizontal stacked bands: weights (within baseline) -> baseline -> peak; activation = peak - baseline.
+    Drawn in a 320-wide viewBox with the aspect ratio kept, so labels stay legible at card width."""
     w, b, p = m.get("weight_mb"), m.get("baseline_mb"), m.get("peak_mb")
     if not all(_num(x) for x in (w, b, p)) or p <= 0:
         return '<div class="sdp-foot">memory stack not drawn: ' + E(m.get("activation_mb") or "no peak measured") + "</div>"
-    W = 600.0
+    W, H = 320.0, 64.0
     scale = (W - 4) / max(p, w, b, 1e-9)
     xw, xb, xp = w * scale, b * scale, p * scale
     act = max(0.0, p - b)
     xa = max(xp - xb, 0.0)
-    # the activation band is the story: never let it vanish below 3px even when it is tiny
-    xa_draw = max(xa, 3.0) if act > 0 else 0.0
+    xa_draw = max(xa, 3.0) if act > 0 else 0.0  # the activation band is the story: never below 3px
     return (
-        f'<svg class="sdp-stack" viewBox="0 0 {W:.0f} 78" preserveAspectRatio="none" role="img" '
+        f'<svg class="sdp-stack" viewBox="0 0 {W:.0f} {H:.0f}" role="img" '
         f'aria-label="weights {w:,.0f} MB, baseline {b:,.0f} MB, peak {p:,.0f} MB, activation {act:,.1f} MB">'
-        f'<rect class="b" x="2" y="18" height="22" rx="3" width="0" data-sdp="rect" data-w="{xb:.1f}"/>'
-        f'<rect class="w" x="2" y="22" height="14" rx="2" width="0" data-sdp="rect" data-w="{xw:.1f}"/>'
-        f'<rect class="a" x="{2 + xb:.1f}" y="14" height="30" rx="3" width="0" data-sdp="rect" data-w="{xa_draw:.1f}"/>'
-        f'<line class="guide" x1="2" y1="52" x2="{2 + xp:.1f}" y2="52"/>'
-        f'<text x="2" y="12">weights {w:,.0f} MB</text>'
-        f'<text x="{min(2 + xb, W - 150):.1f}" y="64" class="hi">activation {act:,.1f} MB</text>'
-        f'<text x="{W - 2:.0f}" y="12" text-anchor="end">peak {p:,.0f} MB</text>'
-        f'<text x="{W - 2:.0f}" y="76" text-anchor="end">baseline {b:,.0f} MB</text>'
+        f'<text x="2" y="10">weights {w:,.0f} MB</text>'
+        f'<text x="{W - 2:.0f}" y="10" text-anchor="end">peak {p:,.0f} MB</text>'
+        f'<rect class="b" x="2" y="16" height="20" rx="3" width="0" data-sdp="rect" data-w="{xb:.1f}"/>'
+        f'<rect class="w" x="2" y="20" height="12" rx="2" width="0" data-sdp="rect" data-w="{xw:.1f}"/>'
+        f'<rect class="a" x="{2 + xb:.1f}" y="13" height="26" rx="3" width="0" data-sdp="rect" data-w="{xa_draw:.1f}"/>'
+        f'<line class="guide" x1="2" y1="44" x2="{2 + xp:.1f}" y2="44"/>'
+        f'<text x="2" y="58" class="hi">activation {act:,.1f} MB</text>'
+        f'<text x="{W - 2:.0f}" y="58" text-anchor="end">baseline {b:,.0f} MB</text>'
         "</svg>"
     )
 
@@ -376,19 +386,19 @@ def timeline_svg(load_s: Any, latency_ms: Any, warm: bool) -> str:
     lat_s = float(latency_ms) / 1000.0
     ld = float(load_s) if _num(load_s) else 0.0
     total = max(ld + lat_s, 1e-9)
-    W = 600.0
+    W, H = 320.0, 30.0
     xl = (W - 4) * (ld / total)
     xi = max((W - 4) * (lat_s / total), 2.0)
     ratio = (ld / lat_s) if lat_s > 0 and ld > 0 else None
-    label_l = f"load {ld:.2f} s{' (warm)' if warm else ' (cold)'}" if ld > 0 else "load 0 s (warm)"
-    rt = f" · load is {ratio:,.0f}x inference" if ratio and ratio >= 2 else ""
+    label_l = f"load {ld:.2f} s {'warm' if warm else 'cold'}" if ld > 0 else "load 0 s warm"
+    rt = f" ({ratio:,.0f}x)" if ratio and ratio >= 2 else ""
     return (
-        f'<svg class="sdp-timeline" viewBox="0 0 {W:.0f} 34" preserveAspectRatio="none" role="img" '
+        f'<svg class="sdp-timeline" viewBox="0 0 {W:.0f} {H:.0f}" role="img" '
         f'aria-label="{E(label_l)}, inference {lat_s * 1000:,.0f} ms">'
-        f'<rect class="load" x="2" y="4" height="12" rx="2" width="0" data-sdp="rect" data-w="{xl:.1f}"/>'
-        f'<rect class="infer" x="{2 + xl:.1f}" y="4" height="12" rx="2" width="0" data-sdp="rect" data-w="{xi:.1f}"/>'
-        f'<text x="2" y="30">{E(label_l)}</text>'
-        f'<text x="{W - 2:.0f}" y="30" text-anchor="end" class="hi">inference {lat_s * 1000:,.0f} ms{E(rt)}</text>'
+        f'<rect class="load" x="2" y="2" height="10" rx="2" width="0" data-sdp="rect" data-w="{xl:.1f}"/>'
+        f'<rect class="infer" x="{2 + xl:.1f}" y="2" height="10" rx="2" width="0" data-sdp="rect" data-w="{xi:.1f}"/>'
+        f'<text x="2" y="26">{E(label_l)}</text>'
+        f'<text x="{W - 2:.0f}" y="26" text-anchor="end" class="hi">inference {lat_s * 1000:,.0f} ms{E(rt)}</text>'
         "</svg>"
     )
 
@@ -405,11 +415,11 @@ def compute_html(card: dict) -> str:
     rows = [
         (_tip("activation", "activation"), _count(m.get("activation_mb"), 1, " MB", "hi")),
         (_tip("inference latency", "latency"), _count(m.get("latency_ms"), 1, " ms", "hi")),
-        (_tip("load time", "load"), _count(load.get("load_seconds"), 2, " s") + f' <span class="k">{"warm" if warm else "cold"}</span>'),
+        (_tip("load time", "load"), '<span class="vv">' + _count(load.get("load_seconds"), 2, " s") + f' <span class="k">{"warm" if warm else "cold"}</span></span>'),
         (_tip("input tokens", "tokens"), _count(m.get("input_tokens"), 0)),
         (_tip("est. FLOPs" + flops_note, "flops"), _count(m.get("est_tflops"), 3, " TFLOPs")),
         (_tip("$/h · est. $ this call", "usd"),
-         (f'<span class="v">{_fmt(m.get("usd_per_hour"))}</span> · ' + _count(m.get("est_usd"), 8, " $"))
+         (f'<span class="vv"><span class="v">{_fmt(m.get("usd_per_hour"), 2)}</span> <span class="k">·</span> ' + _count(m.get("est_usd"), 6, "") + "</span>")
          if _num(m.get("est_usd")) else f'<span class="v na">{E(m.get("est_usd"))}</span>'),
     ]
     legend = ('<div class="sdp-legend"><span><i class="w"></i>' + _tip("weights", "weight") + "</span>"
@@ -489,7 +499,7 @@ def card_html(card: dict, info: ModelInfo | None, specs: list[dict], qids: list[
     return (
         f'<article class="sdp-card{" error" if err else ""}" data-sdp="card">'
         '<div class="head"><div class="title">'
-        f'<div class="base">{E(base_short(info))}' + (f' <span class="r">· LoRA r {lora_r(info)}</span>' if info and lora_r(info) else "") + "</div>"
+        f'<div class="base">{E(base_short(info))}' + (f' <span class="r">· r {lora_r(info)}</span>' if info and lora_r(info) else "") + "</div>"
         f'<div class="repo"><a href="{E(repo_url)}" target="_blank" rel="noopener">{E(card.get("name"))}</a></div>'
         f'<div class="caps">{"".join(pills)}</div></div>'
         + ring_html(ring_v, ring_l) + "</div>"
@@ -501,7 +511,7 @@ def skeleton_html(info: ModelInfo | None, name: str, state_text: str) -> str:
     return (
         '<article class="sdp-card skel in" aria-busy="true">'
         '<div class="head"><div class="title">'
-        f'<div class="base">{E(base_short(info))}' + (f' <span class="r">· LoRA r {lora_r(info)}</span>' if info and lora_r(info) else "") + "</div>"
+        f'<div class="base">{E(base_short(info))}' + (f' <span class="r">· r {lora_r(info)}</span>' if info and lora_r(info) else "") + "</div>"
         f'<div class="repo">{E(name)}</div><div class="sk s"></div></div><div class="sk ring"></div></div>'
         '<div class="sk bar"></div><div class="sk bar" style="width:72%"></div><div class="sk bar" style="width:48%"></div>'
         f'<div class="state">{E(state_text)}</div></article>'
@@ -541,7 +551,8 @@ def comparison_html(result: dict) -> str:
                 continue
             vote = str(ans.get("vote")) if ans.get("vote") is not None else ans.get("display")
             cls = " maj" if maj is not None and vote == str(maj) else ""
-            cells.append(f'<span class="cell{cls}" data-sdp="cell" title="{E(c["name"])}: {E(ans.get("display"))}">{E(ans.get("display"))}</span>')
+            shown = vote if vote == ans.get("display") else f'{vote} <span class="muted">{ans.get("display")}</span>'
+            cells.append(f'<span class="cell{cls}" data-sdp="cell" title="{E(c["name"])}: {E(vote)} ({E(ans.get("display"))})">{shown}</span>')
         if a.get("n"):
             verdict = (f'<span class="verdict{" unanimous" if a.get("unanimous") else ""}"><b>{a["majority_n"]}/{a["n"]}</b> '
                        f'{"unanimous" if a.get("unanimous") else "agree"} · spread {a.get("prob_spread", 0):.4f}</span>')
@@ -691,9 +702,9 @@ def build_ui() -> gr.Blocks:
             state = gr.Textbox(label="State — what is being decided about", lines=3, value=GOLDEN_STATE,
                                placeholder="Paste the ticket, message, document, board position…")
             with gr.Row():
-                q1type = gr.Radio(["noul", "choice", "score"], value="noul", label="Question type", scale=2,
-                                  info="noul = yes/no · choice = pick one · score = rate on a rubric")
-                q1ins = gr.Textbox(label="Question", value="Does this convey urgency?", scale=5,
+                q1type = gr.Radio(["noul", "choice", "score"], value="noul", label="Question type", scale=3,
+                                  info="noul yes/no · choice pick one · score rubric")
+                q1ins = gr.Textbox(label="Question", value="Does this convey urgency?", scale=6,
                                    placeholder="Which team should handle this?")
             q1opts = gr.Dropdown(choices=[], value=[], multiselect=True, allow_custom_value=True,
                                  label="Options — type one and press Enter to add a chip (choice needs 2+, score 2–10 ascending; none for yes/no)")
@@ -713,7 +724,7 @@ def build_ui() -> gr.Blocks:
             with gr.Accordion("Image, models, pricing", open=False):
                 image = gr.Image(label=f"Image (optional) — read by {', '.join(vnames) or 'no model'}; Gemma 4 deciders drop "
                                        "their base vision encoder and read text only", type="pil", height=160)
-                models = gr.CheckboxGroup(choices=names, value=names, label="Models (public only, default all)")
+                models = gr.CheckboxGroup(choices=names, value=names, label="Models (public only, default all)", elem_id="sdp-models")
                 hardware = gr.Dropdown(choices=list(HARDWARE.keys()), value="Nvidia A100 large (80 GB) — $2.50/h",
                                        label="Price the call as this hardware ($/h from huggingface.co/pricing)")
             with gr.Row():

@@ -57,6 +57,9 @@
   function start() {
     reveal(document);
     mo.observe(document.body, { childList: true, subtree: true });
+    // Gradio 6 swaps gr.HTML content in a way the observer does not always see (measured: the final
+    // cards render arrived with 44 unprocessed nodes); a 250 ms sweep is the cheap, deterministic backstop.
+    setInterval(() => reveal(document), 250);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 

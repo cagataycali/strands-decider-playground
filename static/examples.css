@@ -1,0 +1,91 @@
+/* examples.css -- LANE EXAMPLES. Ability gallery. Tokens from tokens.css (strandsagents.com system):
+   flat surfaces, 1px ink outline -> accent on hover/focus, 8px radius, mono titles, Space Grotesk body.
+   No shadows, no blur. prefers-reduced-motion lands everything instantly. */
+
+.sdx { font-family: var(--sr-text); color: var(--text); }
+.sdx-section { margin: 26px 0 10px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.sdx-section h2 { margin: 0; font-family: var(--sr-mono); font-size: 1.05rem; font-weight: var(--w-semibold); letter-spacing: var(--tracking-h); color: var(--fg); }
+.sdx-section .sub { color: var(--muted); font-size: var(--fs-small); }
+
+.sdx-family { margin: 18px 0 6px; }
+.sdx-fam-head { display: flex; align-items: baseline; gap: 10px; margin: 0 0 10px; padding-bottom: 6px; border-bottom: var(--hairline) solid var(--hair); }
+.sdx-fam-head h3 { margin: 0; font-family: var(--sr-mono); font-size: var(--fs-label); font-weight: var(--w-medium); letter-spacing: var(--tracking-caption); text-transform: uppercase; color: var(--accent); }
+.sdx-fam-head .blurb { color: var(--muted); font-size: var(--fs-small); }
+
+.sdx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+
+.sdx-card { position: relative; display: flex; flex-direction: column; gap: 9px; padding: 14px 14px 12px;
+  background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--sr-radius); cursor: pointer;
+  transition: border-color var(--t-fast) var(--ease-out), transform var(--t-base) var(--ease-out); outline: none; }
+.sdx-card:hover, .sdx-card:focus-visible { border-color: var(--accent); }
+.sdx-card:focus-visible { box-shadow: none; outline: 2px solid var(--accent); outline-offset: 2px; }
+.sdx-card:active { transform: translateY(1px); }
+.sdx-card.loading { border-color: var(--accent); }
+.sdx-card.loading .sdx-run { color: var(--accent); }
+
+.sdx-head { display: flex; gap: 12px; align-items: flex-start; }
+.sdx-thumb { width: 72px; height: 72px; object-fit: contain; border: 1px solid var(--hair); border-radius: var(--sr-radius-small); background: #fff; flex: none; image-rendering: auto; }
+.sdx-card.has-img .sdx-thumb { width: 84px; height: 84px; }
+.sdx-title-wrap { min-width: 0; flex: 1; }
+.sdx-title { margin: 0 0 6px; font-family: var(--sr-mono); font-size: 0.98rem; font-weight: var(--w-semibold); letter-spacing: var(--tracking-h); color: var(--fg); line-height: 1.25; }
+.sdx-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.sdx-chip { font-family: var(--sr-mono); font-size: var(--fs-chip); font-weight: var(--w-medium); letter-spacing: var(--tracking-caption); text-transform: uppercase;
+  padding: 2px 8px; border-radius: var(--sr-radius-pill); border: 1px solid var(--pill-border); color: var(--text-light); background: var(--pill-bg); line-height: 1.5; }
+.sdx-chip.t-noul, .sdx-chip.t-choice, .sdx-chip.t-score { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.sdx-chip.golden { border-color: var(--fg); color: var(--fg); }
+.sdx-chip.vision { border-color: var(--real); color: var(--real); }
+
+.sdx-shows { margin: 0; font-size: var(--fs-label); line-height: var(--lh-body); color: var(--text); }
+
+.sdx-req { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border: var(--hairline) solid var(--hair); border-radius: var(--sr-radius-small); background: var(--chip-bg); }
+.sdx-req .lbl, .sdx-teaches .lbl { font-family: var(--sr-mono); font-size: var(--fs-chip); letter-spacing: var(--tracking-caption); text-transform: uppercase; color: var(--muted); }
+.sdx-state { display: grid; grid-template-columns: 44px 1fr; gap: 6px; align-items: start; }
+.sdx-state pre { margin: 0; font-family: var(--sr-mono); font-size: 0.7rem; line-height: 1.45; white-space: pre-wrap; word-break: break-word; color: var(--text); max-height: 7.3em; overflow: hidden; -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); }
+.sdx-state pre.empty { color: var(--muted); font-style: italic; -webkit-mask-image: none; mask-image: none; }
+.sdx-card:hover .sdx-state pre, .sdx-card:focus-within .sdx-state pre { max-height: none; -webkit-mask-image: none; mask-image: none; }
+.sdx-q { display: grid; grid-template-columns: 44px 1fr; gap: 6px; align-items: baseline; }
+.sdx-q .ins { font-size: var(--fs-small); color: var(--fg); }
+.sdx-q .opts { grid-column: 2; font-family: var(--sr-mono); font-size: 0.66rem; color: var(--text-light); }
+
+.sdx-measured { padding: 8px 10px; border: 1px solid var(--accent); border-radius: var(--sr-radius-small); background: transparent; }
+.sdx-measured.none, .sdx-measured.err { border-color: var(--hair); border-style: dashed; }
+.sdx-measured .cap { display: block; margin-bottom: 6px; font-family: var(--sr-mono); font-size: var(--fs-chip); letter-spacing: 0.02em; color: var(--muted); line-height: 1.4; }
+.sdx-ans + .sdx-ans { margin-top: 8px; padding-top: 8px; border-top: var(--hairline) solid var(--hair); }
+.sdx-ans .line { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.sdx-ans .k { font-family: var(--sr-mono); font-size: var(--fs-small); color: var(--muted); }
+.sdx-ans .v { font-family: var(--sr-mono); font-size: 1.05rem; font-weight: var(--w-semibold); color: var(--accent); letter-spacing: var(--tracking-h); }
+.sdx-ans .c { font-family: var(--sr-mono); font-size: var(--fs-small); color: var(--text-light); margin-left: auto; }
+.sdx-noul { height: 6px; margin-top: 6px; border-radius: var(--sr-radius-pill); background: var(--chip-bg); overflow: hidden; }
+.sdx-noul span { display: block; height: 100%; width: var(--p); background: var(--accent); border-radius: inherit; transition: width var(--t-grow) var(--ease-out); }
+.sdx-bars { display: grid; gap: 3px; margin-top: 6px; }
+.sdx-bars .row { display: grid; grid-template-columns: minmax(84px, 42%) 1fr 44px; gap: 8px; align-items: center; font-size: var(--fs-small); }
+.sdx-bars .l { font-family: var(--sr-mono); font-size: 0.68rem; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sdx-bars .l em { font-style: normal; color: var(--muted); margin-right: 4px; }
+.sdx-bars .b { height: 6px; border-radius: var(--sr-radius-pill); background: var(--chip-bg); overflow: hidden; }
+.sdx-bars .b i { display: block; height: 100%; width: var(--p); background: var(--band-weight); border-radius: inherit; transition: width var(--t-grow) var(--ease-out); }
+.sdx-bars .row.top .b i { background: var(--accent); }
+.sdx-bars .row.top .l { color: var(--fg); font-weight: var(--w-medium); }
+.sdx-bars .n { font-family: var(--sr-mono); font-size: 0.68rem; color: var(--text-light); text-align: right; }
+
+.sdx-teaches { margin: 0; display: grid; grid-template-columns: 54px 1fr; gap: 6px; font-size: var(--fs-small); line-height: var(--lh-body); color: var(--text-light); }
+.sdx-teaches .lbl { padding-top: 2px; }
+
+.sdx-cta { display: flex; justify-content: flex-end; margin-top: auto; }
+.sdx-run { font-family: var(--sr-mono); font-size: var(--fs-small); font-weight: var(--w-medium); letter-spacing: var(--tracking-caption); color: var(--text-light); transition: color var(--t-fast); }
+.sdx-card:hover .sdx-run, .sdx-card:focus-visible .sdx-run { color: var(--accent); }
+
+/* reveal on scroll (examples.js adds .in); reduced motion: instant */
+.sdx-card { opacity: 0; transform: translateY(6px); }
+.sdx-card.in { opacity: 1; transform: none; transition: opacity var(--t-reveal) var(--ease-out), transform var(--t-reveal) var(--ease-out), border-color var(--t-fast); }
+.no-js .sdx-card { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .sdx-card, .sdx-card.in, .sdx-noul span, .sdx-bars .b i, .sdx-run { transition: none !important; }
+  .sdx-card { opacity: 1; transform: none; }
+}
+@media (max-width: 640px) {
+  .sdx-grid { grid-template-columns: 1fr; }
+  .sdx-teaches, .sdx-state, .sdx-q { grid-template-columns: 1fr; }
+}
+
+/* the hidden pick box app.py uses as the click channel (must stay in the DOM and focusable by JS, not by users) */
+#sdx-pick, .sdx-hidden { position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important; opacity: 0 !important; pointer-events: none !important; margin: 0 !important; padding: 0 !important; }

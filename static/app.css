@@ -380,3 +380,23 @@ body, .gradio-container, gradio-app {
 .sdp-status .dot.live, .sdp-status .dot.ok { background: var(--accent); }
 .sdp-status .dot.err { background: var(--real); }
 .sdp-status .progress { background: var(--chip-bg); } .sdp-status .progress > i { background: var(--accent); }
+/* Gradio puts the Group's elem_id on two nested divs: outline only the outer one */
+.gradio-container #sdp-ask #sdp-ask, .gradio-container #sdp-ask > .gr-group { border: 0 !important; padding: 0 !important; }
+.sdp-card .title .base { font-size: 0.95rem; }
+.sdp-card .title .base .r { white-space: nowrap; font-weight: var(--w-medium); color: var(--muted); }
+.sdp-card.skel .sk { display: block; min-height: 8px; }
+/* option labels inside radio/checkbox groups are values, not captions: no uppercase */
+.gradio-container .wrap label > span { text-transform: none !important; letter-spacing: 0 !important; font-size: 0.68rem !important; color: inherit !important; font-weight: var(--w-medium) !important; }
+.gradio-container .wrap label { color: var(--fg) !important; }
+.sdp-strip .srow, .sdp-strip .heads { grid-template-columns: 240px 1fr auto; }
+.sdp-strip .cell .muted { color: var(--muted); margin-left: 0.3em; }
+.sdp-multiples { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.sdp-stack { height: auto; aspect-ratio: 320 / 64; } .sdp-timeline { height: auto; aspect-ratio: 320 / 30; }
+.sdp-stack text, .sdp-timeline text { font-size: 9px; }
+.sdp-compute .vv { display: inline-flex; gap: 0.35em; align-items: baseline; white-space: nowrap; }
+.sdp-compute .vv .k { font-size: 0.68rem; }
+.gradio-container label.container > span:first-child, .gradio-container .block > label > span:first-child {
+  font-family: var(--sr-mono) !important; font-size: var(--fs-caption) !important; font-weight: var(--w-medium) !important; letter-spacing: var(--tracking-caption); text-transform: uppercase; color: var(--muted) !important; }
+.gradio-container fieldset .wrap label > span { text-transform: none !important; letter-spacing: 0 !important; font-size: 0.68rem !important; color: inherit !important; }
+.gradio-container [data-testid="status-tracker"], .gradio-container .wrap.generating, .gradio-container .wrap.pending { background: transparent !important; border: 0 !important; }
+.gradio-container .accordion button, .gradio-container button.label-wrap, .gradio-container .label-wrap button { background: transparent !important; border: 0 !important; border-radius: 0 !important; padding-left: 0 !important; }

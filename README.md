@@ -1,22 +1,53 @@
 ---
 title: Strands Decider Playground
-emoji: 🎛️
-colorFrom: indigo
+emoji: 🐸
+colorFrom: green
 colorTo: gray
 sdk: gradio
 sdk_version: 6.30.0
 app_file: app.py
 pinned: false
-short_description: Every Strands decider answers one question, side by side
+short_description: One question, every public Strands decider, side by side
 ---
 
 # Strands Decider Playground
 
-Type one decision question and watch **every post-tuned StrandsAgents decider** answer it side
-by side — with per-option probabilities, calibrated confidence, each model's own published
-evals, and the measured compute cost of the call.
+One question. Every decider. Ask once and every **public** StrandsAgents decider answers side
+by side — a probability for each option, a calibrated confidence, the model's own published
+evals, and the measured cost of the call.
+
+A decider is a small post-tuned language model that answers a typed question about a piece of
+state — yes/no, pick one, or rate on a rubric — with a probability for every option instead of
+free text.
 
 > This Space is **private**. Visibility is set through the API by lane DEPLOY, not by this card.
+> Only repos whose Hub record says `private: false` are listed; the footer count is that filter's
+> result, read live at start (7 at the time of writing).
+
+## The page
+
+Design tokens come from the strands-labs/robots docs (`docs/stylesheets/extra.css`): flat black
+or white surfaces, one green (`#00cc60` dark, `#007a3d` light), 1 px ink outlines, 8 px radius,
+JetBrains Mono headings over Space Grotesk text, the pixel frog mark. Everything lives in
+`static/` (`tokens.css`, `app.css`, `app.js`, `mark.svg`, `wordmark.svg`, self-hosted fonts).
+
+1. **Ask bar** — state, one question with its type, options as chips (type, Enter adds). Up to
+   eight questions. `Enter` runs, `Esc` clears.
+2. **Cards stream in one model at a time**: skeletons with a quiet shimmer are replaced as each
+   model finishes. Cards are labelled by **base + LoRA rank** — the digits in a repo name are not
+   a size (`2B-gemma4` is an E2B, `4b-gemma4` an E4B). Probability bars grow from zero, the
+   confidence ring draws itself, the argmax is the one green element.
+3. **Comparison** is a diagram: an agreement strip with each model's argmax (majority filled),
+   small multiples of the full distribution per option, and the winning-probability spread.
+4. **Compute** per card: a memory stack (weights → baseline after load → peak, the activation
+   band = peak − baseline in green), load vs inference on one linear axis — load is ~52× a
+   forward, and the picture says so — FLOPs with the active-parameter footnote for the MoE,
+   and $/h priced at the selected hardware. Numbers count up on reveal; every metric has a
+   one-sentence tooltip.
+5. **Published evals** as badges that link to the exact `eval/**/summary.json` in the repo.
+6. **Footer**: public model count · hardware · torch / transformers / gradio · built by strands.
+
+Motion is 120–600 ms and lands instantly under `prefers-reduced-motion`. No emoji in the UI.
 
 ## What it shows, per model
 
@@ -37,8 +68,9 @@ the majority answer, which models dissent, and the spread of the winning probabi
 
 ## Things this app refuses to get wrong
 
-- **The model list is read live from the org at start.** There is no hardcoded list, which is
-  how two models nobody had written down (`2B-gemma4`, `4b-gemma4`) appear on their own.
+- **The model list is read live from the org at start**, then filtered to **public** repos
+  (`model_info().private == False`). There is no hardcoded list; the two private retrains
+  (`2B-gemma4`, `4b-gemma4`) are dropped by the Hub flag, not by name.
 - **Images only go to models that can read them.** The rule is not a config flag — no decider
   config has one, and *every* base model carries a `vision_config`. Per `docs/vision.md`, images
   work on **Qwen3.5 bases with a pointer head**; the Gemma 4 checkpoints load their base's text
@@ -59,8 +91,9 @@ the majority answer, which models dissent, and the spread of the winning probabi
 
 | file | owner | what |
 |---|---|---|
-| `app.py` | lane APP | Gradio UI + the headless `answer()` entry point |
-| `registry.py` | lane APP | live org read, capability detection, eval fetch |
+| `app.py` | lane APP (`answer()`), lane DESIGN (layout + rendering) | Gradio UI + the headless `answer()` entry point |
+| `registry.py` | lane APP (+ DESIGN: public-only filter) | live org read, public filter, capability detection, eval fetch |
+| `static/` | lane DESIGN | tokens, stylesheet, motion, mark, wordmark, fonts |
 | `runner.py` | lane APP | one locked call: load → answer → measure |
 | `cache.py` | lane APP | base-keyed LRU with eviction and `plan()` |
 | `metrics.py` | lane METRICS | the compute measurement (imported, never edited) |
@@ -70,4 +103,6 @@ the majority answer, which models dissent, and the spread of the winning probabi
 `lanes/APP/GOLDEN.md` records `2B-qwen3.5-v1-2610` on CPU reproducing every published digit of
 the README example (noul 0.8581 vs 0.858 · choice `billing` 0.7728/conf 0.6591 vs 0.773/0.659 ·
 score 1.0345/conf 0.5091, `frustrated` 0.5738 vs 1.03/0.509/0.574). Max absolute delta on any
-probability: **0.0003**. Click **Load golden question** in the app to re-run it.
+probability: **0.0003**. Re-run through `app.answer()` after the DESIGN layout rewrite
+(`lanes/DESIGN/golden_via_app.json`): max |delta| vs that recording **0.0**. Click **Load golden
+question** in the app to re-run it yourself.
