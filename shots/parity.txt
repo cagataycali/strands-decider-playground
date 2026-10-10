@@ -1,0 +1,3 @@
+PASS strands-decider-2B-qwen3.5-v1-2610: rescored 180/231 readme 180 summary 180 per-task mismatches 0 brier 0.2803 (summary 0.2804, delta -0.0001) {'complete': 217, 'reconstructed_1_key': 13, 'unrecoverable_5_missing': 1}
+PASS strands-decider-2B-hobson-v19: rescored 167/231 readme 167 summary 167 per-task mismatches 0 brier 0.3483 (summary 0.3477, delta +0.0006) {'complete': 217, 'reconstructed_1_key': 13, 'unrecoverable_5_missing': 1}
+PASS strands-decider-26B-A4B-gemma4-v1-2610: rescored 207/231 readme 207 summary 207 per-task mismatches 0 brier 0.1602 (summary 0.1616, delta -0.0013) {'complete': 217, 'reconstructed_1_key': 13, 'unrecoverable_5_missing': 1}
