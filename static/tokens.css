@@ -91,3 +91,14 @@
 @media (prefers-reduced-motion: reduce) {
   :root { --t-fast: 0ms; --t-base: 0ms; --t-grow: 0ms; --t-reveal: 0ms; }
 }
+
+/* ---- fluid page (measured in lanes/RESPONSIVE/AUDIT.md): the container and the root type grow with the
+   screen in steps, so a 6K display is neither a 1280 px stripe nor a 6000 px smear. <=1440 is exactly
+   the laptop design; the root font-size is 16 px there and climbs to 24 px at 5884 px wide and above (18.8 px at the XDR's default 3008 px). ---- */
+:root { --page-max: 1280px; --page-pad: 24px; }
+@media (min-width: 1680px) { :root { --page-max: 1600px; } }
+@media (min-width: 2300px) { :root { --page-max: 2000px; --page-pad: 32px; } }
+@media (min-width: 2900px) { :root { --page-max: 2300px; --page-pad: 36px; } }
+@media (min-width: 3600px) { :root { --page-max: 2800px; --page-pad: 40px; } }
+@media (min-width: 5000px) { :root { --page-max: 3600px; --page-pad: 48px; } }
+html { font-size: clamp(16px, calc(16px + (100vw - 1440px) * 0.0018), 24px); }

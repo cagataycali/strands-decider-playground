@@ -12,7 +12,7 @@
 .sdx-fam-head h3 { margin: 0; font-family: var(--sr-mono); font-size: var(--fs-label); font-weight: var(--w-medium); letter-spacing: var(--tracking-caption); text-transform: uppercase; color: var(--accent); }
 .sdx-fam-head .blurb { color: var(--muted); font-size: var(--fs-small); }
 
-.sdx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.sdx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); gap: 12px; }
 
 .sdx-card { position: relative; display: flex; flex-direction: column; gap: 8px; padding: 14px 14px 10px;
   background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--sr-radius); cursor: pointer;
@@ -109,3 +109,14 @@
 #sdx-pick, .sdx-hidden { position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important; opacity: 0 !important; pointer-events: none !important; margin: 0 !important; padding: 0 !important; }
 
 .sdx-anchor{display:block;height:0;width:0;overflow:hidden}
+
+/* ---- wide screens (lanes/RESPONSIVE): from 2300 px the six ability families share rows instead of each
+   taking a full-width row with 1-4 cards in it; a family's cards keep their own grid, heading above them. ---- */
+@media (min-width: 2300px) {
+  .sdx { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 2.5rem; align-items: start; }
+  .sdx .sdx-section { grid-column: 1 / -1; }
+  .sdx .sdx-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr)); }
+}
+@media (min-width: 3600px) {
+  .sdx { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 3rem; }
+}

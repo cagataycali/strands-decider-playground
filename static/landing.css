@@ -162,7 +162,7 @@
 /* !important: over the green surface the text MUST be black (5.5:1); Gradio's own .prose a / dark rules otherwise win */
 .gradio-container .ld .ld-footer a, .ld .ld-footer a { color: var(--sr-black) !important; text-decoration: none; }
 .ld .ld-footer a:hover { text-decoration: underline; }
-.ld-footer__inner { max-width: 1232px; margin: 0 auto; padding: 0 24px; }
+.ld-footer__inner { max-width: calc(var(--page-max) - 2 * var(--page-pad)); margin: 0 auto; padding: 0 24px; }
 .ld .ld-footer__kicker, .ld .ld-footer__heading { font-family: var(--sr-mono); font-size: var(--fs-caption); font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; margin: 0 0 0.6rem; color: var(--sr-black) !important; }
 .ld .sr-install--footer { background: var(--sr-black); border-color: var(--sr-black); color: #ffffff; margin: 0 0 1.8rem; }
 .ld .sr-install--footer .sr-copy, .gradio-container .ld .sr-install--footer button.sr-copy { background: var(--sr-black) !important; color: #ffffff !important; border-color: #666464 !important; }
@@ -171,7 +171,7 @@
 .ld-footmark { padding: 2rem 24px 0.5rem; }
 .ld-footmark .ld-wordmark { display: block; width: 100%; height: auto; color: var(--sr-black); opacity: 0.9; }
 .ld-footmark .ld-wordmark path, .ld-footer__brand .ld-wordmark path { fill: var(--sr-black) !important; }
-.ld-footer__legal { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 2rem; padding: 0.8rem 24px 1.4rem; font-family: var(--sr-mono); font-size: 0.6rem; max-width: 1280px; margin: 0 auto; }
+.ld-footer__legal { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 2rem; padding: 0.8rem 24px 1.4rem; font-family: var(--sr-mono); font-size: 0.6rem; max-width: var(--page-max); margin: 0 auto; }
 .ld-footer__brand { display: inline-flex; align-items: center; gap: 0.5rem; }
 .ld-footer__brand .ld-mark { width: 16px; height: 16px; image-rendering: pixelated; }
 .ld-footer__brand .ld-mark path { fill: var(--sr-black) !important; }
@@ -199,4 +199,17 @@
   .ld-cta__panel { border-radius: 0 0 32px 32px; }
   .ld .ld-cta__title { font-size: 1.15rem; }
   .ld .ld-fig__cap { text-align: left; }
+}
+
+/* ---- wide screens (lanes/RESPONSIVE): the 7 model cards become ONE comparable row from 1680 px;
+   hero prose may run to ~56 characters where the column is wide enough. ---- */
+@media (min-width: 1680px) {
+  .ld-models__grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .ld .ld-hero__lead, .ld .ld-hero__note { max-width: 36rem; }
+}
+@media (min-width: 2900px) {
+  /* copy 1 : figure 1 with the figure capped at 60rem (1320 px at a 22 px root): a 1750 px diagram next to 18 px prose is a poster, not a hero */
+  .ld-hero { grid-template-columns: minmax(0, 1fr) minmax(0, 60rem); justify-content: space-between; gap: 4rem; }
+  .gradio-container .ld h1.ld-hero__title, .ld .ld-hero__title { font-size: 3rem !important; }
+  .ld .ld-hero__lead { font-size: 1.1rem; }
 }

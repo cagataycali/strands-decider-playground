@@ -111,3 +111,7 @@
 .sdb-moretasks summary::-webkit-details-marker { display: none; }
 .sdb-moretasks summary::before { content: "+ "; color: var(--muted); } .sdb-moretasks[open] summary::before { content: "\2212 "; }
 .sdb-moretasks summary:hover { color: var(--accent); }
+
+/* ---- wide screens (lanes/RESPONSIVE): from 5000 px the page is 3600 px wide and the board (3724 px at
+   11 px cells) scales to fill it instead of scrolling; below that it keeps its horizontal scroll. ---- */
+@media (min-width: 5000px) { .sdb-board { width: 100%; height: auto; } }

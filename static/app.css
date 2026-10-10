@@ -10,7 +10,9 @@ body, .gradio-container, gradio-app {
   font-feature-settings: "kern" 1;
   -webkit-font-smoothing: antialiased;
 }
-.gradio-container { width: 100% !important; max-width: 1280px !important; min-width: 0 !important; margin: 0 auto !important; padding: 0 24px 48px !important; }
+.gradio-container { width: 100% !important; max-width: var(--page-max) !important; min-width: 0 !important; margin: 0 auto !important; padding: 0 var(--page-pad) 48px !important; }
+/* Gradio's text tokens are px; restated in rem (same values at a 16 px root) so inputs, buttons and labels follow the fluid root. */
+body .gradio-container { --text-xs: 0.625rem; --text-sm: 0.75rem; --text-md: 0.875rem; --text-lg: 1rem; --text-xl: 1.375rem; --text-xxl: 1.625rem; }
 .gradio-container .main.fillable { padding: 0 !important; }
 .gradio-container .block.sdp-plain .html-container { padding: 0 !important; }
 .gradio-container .prose, .gradio-container p, .gradio-container li { color: var(--text); line-height: var(--lh-body); }
@@ -433,3 +435,16 @@ body, .gradio-container, gradio-app {
 .gradio-container label.container > span, .gradio-container .block > label > span { font-family: var(--sr-mono) !important; font-size: var(--fs-caption) !important; letter-spacing: var(--tracking-caption); text-transform: uppercase; color: var(--muted) !important; }
 /* on a band the muted step is one shade too light in paper (4.27:1 on --band); step it up to text-light (>= 5.3:1) */
 .sdp-band .sdp-section .sub, .sdp-band .sdp-status, .sdp-band .sdb-legend, .sdp-band .sdb-dim, .sdp-band .sdp-kick .why, .sdp-band .sdp-grid.idle .state { color: var(--text-light); }
+
+/* ======================= 4. wide screens (lanes/RESPONSIVE) =======================
+   Grids use the width: result cards 4 across from 1680 px and the full row of 7 from 3600 px;
+   the idle pills sit in one row of 7. Below 1680 nothing here applies. */
+@media (min-width: 1680px) {
+  .sdp-grid.idle { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .sdp-grid:not(.idle) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .sdp-multiples { grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); }
+  .sdp-status .progress { max-width: 24rem; }
+}
+@media (min-width: 3600px) {
+  .sdp-grid:not(.idle) { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+}
