@@ -3,6 +3,25 @@
 // only animates them after they enter the DOM (gr.HTML swaps innerHTML on every yield).
 // Everything here degrades to "values already visible" when JS is off or motion is reduced.
 (function () {
+  // Cascade order. Gradio injects launch(css=...) as a <style> BEFORE its own component
+  // stylesheets, whose reset `.gradio-container-* * { border-width: 0 }` has the same
+  // specificity as our single-class rules and later order -- so on the deployed Space every
+  // 1px ink outline (cards, chips, picker tiles, header rule) computed to 0px while a local
+  // launch, where the order is reversed, showed them. Keep our style block LAST in <head>,
+  // and keep it there when Gradio appends more sheets (lazy component CSS).
+  (function keepOurCssLast() {
+    const marker = '--sdp-css: 1';
+    function ours() { return [...document.head.querySelectorAll('style')].find(function (s) { return s.textContent.indexOf(marker) !== -1; }); }
+    function toEnd() {
+      const el = ours();
+      if (el && el !== document.head.lastElementChild) document.head.appendChild(el);
+    }
+    toEnd();
+    new MutationObserver(function (muts) {
+      if (muts.some(function (m) { return [...m.addedNodes].some(function (n) { return n.nodeType === 1 && n.textContent.indexOf(marker) === -1; }); })) toEnd();
+    }).observe(document.head, { childList: true });
+  })();
+
   const REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const DUR = REDUCED ? 0 : 600;
 

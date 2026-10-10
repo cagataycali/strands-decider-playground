@@ -697,7 +697,9 @@ def _css_with_fonts() -> str:
     return css + "\n" + _static("app.css")
 
 
-CSS = _css_with_fonts()
+# The leading rule is the marker app.js uses to find this block and keep it last in <head>
+# (cascade order against Gradio's own reset; see keepOurCssLast there). Comments get stripped, a rule does not.
+CSS = ".sdp-css-marker { --sdp-css: 1; }\n" + _css_with_fonts()
 JS = _static("app.js")
 # gr.HTML cannot run <script>, so every section's CSS/JS rides launch(css=CSS, js=JS).
 CSS += "\n" + landing.LANDING_CSS
