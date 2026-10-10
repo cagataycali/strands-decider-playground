@@ -1,11 +1,11 @@
-"""registry.py -- the LIVE model registry for the decider playground.
+"""The live model registry: which deciders exist, what each can do, what it published.
 
-OWNED BY LANE APP.
+Nothing in this file is a hardcoded model list. The org is read from the Hub at app start
+(`list_decider_models()`): every repo under the org whose name carries the decider prefix and
+whose Hub record is public. Each repo's own config supplies base model, head type, slots and
+dtype; every eval number is pulled from the repo's own `eval/**/summary.json` files.
 
-Nothing in this file is a hardcoded model list. The org is read at app start
-(`list_decider_models()`); every eval number is pulled from the repo's own files.
-
-Two rules learned by measurement (see COORDINATION.md 01:32Z), both load-bearing:
+Two rules learned by measurement, both load-bearing:
 
 1. VISION. No `strands_decider_config.json` has a `vision` key, and EVERY base model
    (including the text-only Qwen3.5-2B-Base) carries a `vision_config`, so neither can
@@ -38,6 +38,7 @@ CONFIG_NAMES = ("strands_decider_config.json", "hobson_config.json")
 
 
 def _api() -> HfApi:
+    """Hub client; uses HF_TOKEN when set, otherwise the local login."""
     return HfApi(token=os.environ.get("HF_TOKEN") or True)
 
 
@@ -47,7 +48,7 @@ def _api() -> HfApi:
 
 
 def supports_vision(base_model: str, head_type: str | None) -> bool:
-    """See rule 1 in the module docstring. Measured over all 9 repos at 01:32Z."""
+    """Rule 1 of the module docstring: a Qwen3.5 base AND a pointer head."""
     base = (base_model or "").lower().replace("-", "").replace("_", "").replace(".", "")
     is_qwen35 = "qwen35" in base
     return bool(is_qwen35 and head_type == "pointer")
@@ -76,6 +77,7 @@ class ModelInfo:
 
 
 def _dl(repo: str, path: str) -> Any:
+    """Download one JSON file from a repo and parse it."""
     return json.load(open(hf_hub_download(repo, path, token=os.environ.get("HF_TOKEN") or None)))
 
 
@@ -115,12 +117,12 @@ def describe_model(repo: str, files: list[str] | None = None) -> ModelInfo:
     )
 
 
-# PUBLIC-ONLY FILTER (owner decision 2026-10-10 01:4xZ, edited by LANE DESIGN -- the one logic
-# edit that lane is allowed in this file). The Space carries an HF_TOKEN so private repos WOULD
-# resolve; this filter is what keeps them off the page. `private` comes from the Hub, never from
-# a name list. DECIDER_PUBLIC_ONLY=0 shows everything the token can see (local debugging only).
+# Listed models = public repos only. A token in the environment could resolve more than that;
+# this filter is what keeps the list to what anyone can download. `private` comes from the Hub
+# record, never from a name list. DECIDER_PUBLIC_ONLY=0 lists everything the token can see
+# (local debugging only).
 PUBLIC_ONLY = os.environ.get("DECIDER_PUBLIC_ONLY", "1") != "0"
-HIDDEN_PRIVATE: list[str] = []  # repos the filter removed in the last list_decider_models()
+HIDDEN_PRIVATE: list[str] = []  # repo ids the filter dropped in the last list_decider_models()
 
 
 def _is_private(api: HfApi, m: Any) -> bool:
@@ -132,10 +134,10 @@ def _is_private(api: HfApi, m: Any) -> bool:
 
 
 def list_decider_models(org: str = ORG) -> list[ModelInfo]:
-    """LIVE read of the org. The app calls this at start -- never a literal list.
+    """Live read of the org. The app calls this at start -- never a literal list.
 
     With PUBLIC_ONLY (default) a repo whose Hub record says private=True is dropped and its
-    id is kept in HIDDEN_PRIVATE so the page footer can assert the public count.
+    id is kept in HIDDEN_PRIVATE so the public count can be asserted.
     """
     api = _api()
     HIDDEN_PRIVATE.clear()
@@ -239,6 +241,7 @@ def fetch_evals(info: ModelInfo) -> dict[str, Any]:
 
 
 def load_registry(org: str = ORG, with_evals: bool = True) -> list[ModelInfo]:
+    """List the deciders and, by default, attach each one's published evals."""
     models = list_decider_models(org)
     if with_evals:
         for m in models:
@@ -249,27 +252,13 @@ def load_registry(org: str = ORG, with_evals: bool = True) -> list[ModelInfo]:
     return models
 
 
-if __name__ == "__main__":  # python registry.py -> a quick live check
-    ms = load_registry()
-    print(f"{len(ms)} decider models in {ORG}")
-    for m in ms:
-        hl = ", ".join(
-            f"{h['suite']} acc={h['accuracy']:.4f}" for h in m.evals.get("headline", [])
-            if isinstance(h.get("accuracy"), (int, float))
-        )
-        print(f"  {m.name:<40} base={m.base_model:<26} vision={m.vision!s:<5} slots={m.num_slots}")
-        print(f"      evals: {hl or m.evals.get('error')}")
-
-
 # ---------------------------------------------------------------------------------
-# active parameters -- the FLOPs input (RESEARCH/DESIGN.md section 2)
+# active parameters -- the FLOPs input
 # ---------------------------------------------------------------------------------
 
 
 def base_param_total(base_model: str, token: str | None = None) -> int | None:
     """Total parameters of the base, live from the Hub's safetensors metadata."""
-    from huggingface_hub import HfApi
-
     st = getattr(HfApi(token=token or os.environ.get("HF_TOKEN")).model_info(base_model),
                  "safetensors", None)
     if st is None:
@@ -286,8 +275,7 @@ def active_params(base_model: str, token: str | None = None) -> dict:
 
     For a dense model active == total. For the MoE base `gemma-4-26B-A4B-it` only top_k of
     num_experts run per token, so the two differ by ~6x and using TOTAL would overstate the
-    FLOPs of the biggest model by that factor. The arithmetic is DESIGN.md section 2's,
-    recomputed here from the base `config.json` rather than copied:
+    FLOPs of the biggest model by that factor. Recomputed from the base `config.json`:
 
         per_expert    = 3 * hidden_size * moe_intermediate_size
         all_experts   = num_experts * per_expert * num_layers
@@ -321,3 +309,15 @@ def active_params(base_model: str, token: str | None = None) -> dict:
     except Exception as e:  # noqa: BLE001
         out["error"] = f"{type(e).__name__}: {e}"
     return out
+
+
+if __name__ == "__main__":  # python registry.py -> a quick live check of the org
+    ms = load_registry()
+    print(f"{len(ms)} decider models in {ORG}")
+    for m in ms:
+        hl = ", ".join(
+            f"{h['suite']} acc={h['accuracy']:.4f}" for h in m.evals.get("headline", [])
+            if isinstance(h.get("accuracy"), (int, float))
+        )
+        print(f"  {m.name:<40} base={m.base_model:<26} vision={m.vision!s:<5} slots={m.num_slots}")
+        print(f"      evals: {hl or m.evals.get('error')}")

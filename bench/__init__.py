@@ -1,6 +1,7 @@
-"""bench/__init__.py (import bench) -- LANE BENCH. JevBench inside the playground: browse the 231 public tasks, run the
-bench on every public model from a button (persistent background job, pushed to a private HF
-dataset), and the activity board (task x model, GitHub-contribution style) + common-error panels.
+"""JevBench inside the playground: browse the 231 public tasks, run the bench on every listed
+model from a button (a persistent background job whose rows are pushed to a Hugging Face dataset,
+`BENCH_DATASET_REPO`), and the activity board (task x model, contribution-graph style) with the
+common-error panels.
 
 Scoring is JevBench's own (bench/jev.py delegates to the pinned checkout); the paired test is
 strands-decider's evaluation/jevbench/paired.py copied verbatim (bench/paired_upstream.py).
@@ -38,6 +39,7 @@ _LOCK = threading.RLock()  # re-entrant: start_run holds it while task_ids() -> 
 
 
 def E(s: Any) -> str:
+    """HTML-escape anything (None -> empty string)."""
     return html.escape(str(s), quote=True)
 
 
@@ -45,6 +47,7 @@ def E(s: Any) -> str:
 # tasks
 # ---------------------------------------------------------------------------------
 def tasks() -> dict:
+    """{task_id: Task} for the 231 vendored tasks, loaded once."""
     global _TASKS, _ORDER
     with _LOCK:
         if _TASKS is None:
@@ -54,15 +57,18 @@ def tasks() -> dict:
 
 
 def order() -> list[str]:
+    """Task ids in benchmark order (original, easy, hard)."""
     tasks()
     return list(_ORDER or [])
 
 
 def tier(t) -> str:
+    """A task's tier (easy | standard | hard)."""
     return (t.provenance or {}).get("tier", "standard")
 
 
 def task_ids(tier_filter: str | None = None) -> list[str]:
+    """Ordered task ids, optionally one tier only."""
     ts = tasks()
     return [i for i in order() if not tier_filter or tier(ts[i]) == tier_filter]
 
@@ -99,6 +105,7 @@ def groups() -> list[tuple[str, str, list[str]]]:
 
 
 def task_meta(tid: str) -> dict:
+    """Small record for the picker and the board: id, tier, family, type, title."""
     t = tasks()[tid]
     return {"id": tid, "tier": tier(t), "family": t.family, "type": t.question["type"],
             "labels": list(t.labels), "expected": str(t.expected)}
@@ -119,6 +126,7 @@ def picker_payload() -> list[dict]:
 # scoring one card (the dict app.answer() returns for one model)
 # ---------------------------------------------------------------------------------
 def score_card(card: dict, tid: str) -> dict:
+    """Score one model card against task `tid` with JevBench's own scorer -> one results row."""
     t = tasks()[tid]
     ans = None
     for v in (card.get("answers") or {}).values():
@@ -196,6 +204,9 @@ def published_rows() -> list[dict]:
 # the job: one background thread, persistent on disk, pushed to a private HF dataset
 # ---------------------------------------------------------------------------------
 class Job:
+    """One bench run: a background thread that calls answer() per task x model, appends rows to
+    bench/runs/<run_id>/results.jsonl, and pushes the folder to the dataset when it ends."""
+
     def __init__(self, run_id: str, models: list[str], tids: list[str], label: str):
         self.run_id, self.models, self.tids, self.label = run_id, models, tids, label
         self.dir = RUNS / run_id
@@ -216,6 +227,7 @@ class Job:
 
     # -- persistence ------------------------------------------------------------
     def meta(self) -> dict:
+        """The run's meta.json contents."""
         return {
             "run_id": self.run_id, "label": self.label, "models": self.models, "n_tasks": len(self.tids),
             "task_ids": self.tids, "started": self.started, "finished": self.finished, "done": self.done,
@@ -224,11 +236,13 @@ class Job:
         }
 
     def save_meta(self) -> None:
+        """Write meta.json."""
         tmp = self.meta_path.with_suffix(".tmp")
         tmp.write_text(json.dumps(self.meta(), indent=1))
         tmp.replace(self.meta_path)
 
     def append(self, row: dict) -> None:
+        """Append one results row (JSON line)."""
         with self.results_path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(row) + "\n")
         self.results[row["model"]][row["task_id"]] = row
@@ -238,6 +252,7 @@ class Job:
 
     @classmethod
     def load(cls, run_dir: Path) -> "Job | None":
+        """Re-read a finished run from disk; None when the folder is not a run."""
         try:
             meta = json.loads((run_dir / "meta.json").read_text())
         except Exception:  # noqa: BLE001
@@ -260,9 +275,11 @@ class Job:
 
     # -- state -----------------------------------------------------------------
     def running(self) -> bool:
+        """True while the worker thread is alive."""
         return self.thread is not None and self.thread.is_alive()
 
     def totals(self) -> dict[str, dict]:
+        """Per model: done, correct, p50 latency, Brier -- from the rows so far."""
         out = {}
         n = len(self.tids)
         for m in self.models:
@@ -271,6 +288,7 @@ class Job:
         return out
 
     def eta_s(self) -> float | None:
+        """Seconds left at the measured pace, while running."""
         if not self.running():
             return None
         per = [statistics.median(v) for v in self.lat.values() if v]
@@ -280,15 +298,18 @@ class Job:
         return rem * (statistics.mean(per) / 1000.0 + OVERHEAD_S)
 
     def elapsed(self) -> float:
+        """Seconds since the run started."""
         return (self.finished or time.time()) - self.started
 
     # -- work ------------------------------------------------------------------
     def start(self, answer_fn: Callable[..., dict]) -> None:
+        """Start the worker thread; `answer_fn` is app.answer."""
         self.thread = threading.Thread(target=self._loop, args=(answer_fn,), name=f"bench-{self.run_id}", daemon=True)
         self.save_meta()
         self.thread.start()
 
     def _loop(self, answer_fn: Callable[..., dict]) -> None:
+        """The worker: one answer() per task x model, scored and appended; pushes at the end."""
         try:
             # task-major: a column fills across all models, like a day on the activity board.
             # The runner's cache keeps every public model resident on the a100; on a laptop one
@@ -326,6 +347,7 @@ class Job:
             self._push()
 
     def _push(self) -> None:
+        """Upload the run folder to BENCH_DATASET_REPO (skipped without a token); records the outcome."""
         tok = hf_token()
         if not tok:
             self.push = {"status": "skipped", "why": "no HF token in this environment"}
@@ -354,7 +376,7 @@ class Job:
         self.save_meta()
 
 
-OVERHEAD_S = 0.05  # request build + scoring per call, measured on the Mac (<50 ms)
+OVERHEAD_S = 0.05  # request build + scoring per call, measured (<50 ms)
 
 
 def hf_token() -> str | None:
@@ -370,6 +392,7 @@ def hf_token() -> str | None:
 
 
 def _error_row(tid: str, m: str, err: str) -> dict:
+    """A results row for a call that failed (counted wrong, Brier 1.0)."""
     t = tasks()[tid]
     return {"task_id": tid, "tier": tier(t), "family": t.family, "type": t.question["type"], "model": m,
             "predicted": None, "expected": str(t.expected), "correct": False, "valid": False, "strict_valid": False,
@@ -377,6 +400,7 @@ def _error_row(tid: str, m: str, err: str) -> dict:
 
 
 def _totals(rows: list[dict], n: int) -> dict:
+    """Aggregate one model's rows: done, correct, p50 latency, mean Brier."""
     done = len(rows)
     correct = sum(1 for r in rows if r.get("correct"))
     briers = [r["brier"] for r in rows if isinstance(r.get("brier"), (int, float))]
@@ -394,6 +418,7 @@ _LIVE: Job | None = None
 
 
 def jobs() -> dict[str, Job]:
+    """Every run on disk plus the live one, by run id."""
     if not _JOBS and RUNS.exists():
         for d in sorted(RUNS.iterdir()):
             j = Job.load(d)
@@ -403,10 +428,12 @@ def jobs() -> dict[str, Job]:
 
 
 def live() -> Job | None:
+    """The run in progress, if any."""
     return _LIVE if _LIVE and _LIVE.running() else None
 
 
 def latest() -> Job | None:
+    """The live run, else the most recent finished one."""
     js = jobs()
     if _LIVE:
         return _LIVE
@@ -414,6 +441,8 @@ def latest() -> Job | None:
 
 
 def start_run(answer_fn: Callable[..., dict], models: list[str], tier_filter: str | None, label: str = "") -> Job | str:
+    """Start a run over `models` x the tasks of `tier_filter` (None = all). Returns the Job, or a
+    message string when one is already running."""
     global _LIVE
     with _LOCK:
         if live():
@@ -430,6 +459,7 @@ def start_run(answer_fn: Callable[..., dict], models: list[str], tier_filter: st
 
 
 def cancel_live() -> bool:
+    """Ask the live run to stop after its current call; the partial run is still pushed."""
     j = live()
     if j:
         j.cancel.set()
@@ -439,7 +469,7 @@ def cancel_live() -> bool:
 
 def estimate_s(models: list[str], n_tasks: int, device: str) -> tuple[float, str]:
     """Wall-time estimate BEFORE a run, from the last finished run's own per-model medians when
-    there is one, else METRICS' measured medians for this device class (labelled as assumed)."""
+    there is one, else a per-device default (labelled as such in the returned source string)."""
     per: dict[str, float] = {}
     for j in sorted(jobs().values(), key=lambda j: j.started):
         for m, t in j.totals().items():
@@ -448,11 +478,11 @@ def estimate_s(models: list[str], n_tasks: int, device: str) -> tuple[float, str
     src = "measured in earlier runs"
     missing = [m for m in models if m not in per]
     if missing:
-        # METRICS lane, lanes/METRICS/TESTS.md: 2B on MPS bf16 327-382 ms, CPU fp32 663-715 ms; a100 ~100 ms (DEPLOY all7).
+        # Rough per-call defaults by device class, used only until a run has produced medians.
         default = {"cuda": 120.0, "mps": 360.0, "cpu": 700.0}.get(device, 500.0)
         for m in missing:
             per[m] = default
-        src = f"assumed {default:.0f} ms/call for {len(missing)} model(s) from METRICS' {device} medians" + (
+        src = f"no measured median yet for {len(missing)} model(s), {default:.0f} ms/call assumed until the first run" + (
             "; the rest measured" if len(missing) < len(models) else "")
     total = sum(per[m] / 1000.0 + OVERHEAD_S for m in models) * n_tasks
     return total, src
@@ -468,10 +498,12 @@ _SCHED_MODELS: list[str] = []
 
 
 def schedule_path() -> Path:
+    """Where the daily-schedule setting is persisted."""
     return RUNS / "schedule.json"
 
 
 def set_schedule(enabled: bool, hhmm: str, answer_fn: Callable, models: list[str]) -> dict:
+    """Turn the daily full run on/off at HH:MM UTC; returns the schedule state."""
     global _SCHED_THREAD, _SCHED_ANSWER, _SCHED_MODELS
     hh, mm = (hhmm or "03:00").split(":")[:2]
     hhmm = f"{int(hh):02d}:{int(mm):02d}"
@@ -495,6 +527,7 @@ def set_schedule(enabled: bool, hhmm: str, answer_fn: Callable, models: list[str
 
 
 def _next_fire(hhmm: str) -> float:
+    """Epoch seconds of the next HH:MM UTC."""
     hh, mm = (int(x) for x in hhmm.split(":")[:2])
     now = time.time()
     tm = time.gmtime(now)
@@ -504,6 +537,7 @@ def _next_fire(hhmm: str) -> float:
 
 
 def _sched_loop() -> None:
+    """Timer thread: sleeps until the next fire time and starts a full run."""
     while _SCHED.get("enabled"):
         nxt = _SCHED.get("next") or _next_fire(_SCHED["hhmm"])
         if time.time() >= nxt:
@@ -536,6 +570,7 @@ def _rows_from_job(job: Job | None, labels: dict[str, str], all_models: list[str
 
 
 def board_svg(rows: list[dict], n_models_for_foot: int | None = None) -> str:
+    """The task x model activity board as one SVG: accent = correct, ink = wrong, opacity = confidence."""
     gs = groups()
     cols: list[tuple[str, int]] = []  # (tid, x)
     x = LABEL_W
@@ -628,6 +663,7 @@ def board_svg(rows: list[dict], n_models_for_foot: int | None = None) -> str:
 
 
 def board_html(job: Job | None, labels: dict[str, str], show_history: bool = False, all_models: list[str] | None = None) -> str:
+    """Board + status line for a run, with the published runs as italic rows (history optional)."""
     rows = _rows_from_job(job, labels, all_models or list(labels))
     pub = published_rows()
     rows += [r for r in pub if r["kind"] == "published"]
@@ -646,6 +682,7 @@ def board_html(job: Job | None, labels: dict[str, str], show_history: bool = Fal
 
 
 def _status_html(job: Job | None) -> str:
+    """Run status: progress, ETA, push outcome."""
     if not job:
         return ('<div class="sdb-status"><span class="sdb-dim">No run yet on this Space. The rows below are the published runs; '
                 'press Run to add live rows.</span></div>')
@@ -669,6 +706,7 @@ def _status_html(job: Job | None) -> str:
 
 
 def _fmt_s(s: float | None) -> str:
+    """Seconds -> '42 s' / '3 min 10 s' / '1.5 h'."""
     if s is None:
         return "—"
     s = int(s)
@@ -683,6 +721,7 @@ def _fmt_s(s: float | None) -> str:
 # task detail (click a column) + the gold card shown AFTER the models answered
 # ---------------------------------------------------------------------------------
 def task_detail_html(tid: str, job: Job | None, labels: dict[str, str]) -> str:
+    """One task in full: state, question, gold, every model's answer side by side."""
     ts = tasks()
     if tid not in ts:
         return ""
@@ -739,6 +778,7 @@ def gold_html(tid: str | None, result: dict | None) -> str:
 # common errors: only patterns we can COUNT
 # ---------------------------------------------------------------------------------
 def errors_html(job: Job | None, labels: dict[str, str], include_published: bool = True) -> str:
+    """Common-error panels: per model, per task, models x tiers, and the paired McNemar test."""
     rows = _rows_from_job(job, labels)
     if include_published and not rows:
         rows = [r for r in published_rows() if r["kind"] == "published"]
@@ -843,6 +883,7 @@ def errors_html(job: Job | None, labels: dict[str, str], include_published: bool
 # picker + static
 # ---------------------------------------------------------------------------------
 def picker_html() -> str:
+    """The task picker shell; the task list rides along as escaped JSON for static/bench.js."""
     # HTML-escaped JSON in a hidden div (textContent unescapes it); a <script type=json> would be
     # flagged/stripped by gr.HTML's sanitiser.
     data = E(json.dumps(picker_payload(), ensure_ascii=False))
@@ -860,8 +901,10 @@ def picker_html() -> str:
 
 
 def css() -> str:
+    """static/bench.css for app.py's launch(css=...)."""
     return (STATIC / "bench.css").read_text(encoding="utf-8")
 
 
 def js() -> str:
+    """static/bench.js for app.py's launch(js=...)."""
     return (STATIC / "bench.js").read_text(encoding="utf-8")

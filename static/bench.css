@@ -1,4 +1,4 @@
-/* bench.css -- LANE BENCH. JevBench picker, run controls, the activity board (SVG), detail + error panels.
+/* bench.css -- JevBench picker, run controls, the activity board (SVG), detail + error panels.
    Strands rules: flat surfaces, 1px borders in card-border, 8px radius, accent ONLY for "correct", no shadows. */
 .sdb-dim { color: var(--muted); font-size: var(--fs-caption); }
 .sdb-chip { display: inline-block; font-family: var(--sr-mono); font-size: var(--fs-chip); letter-spacing: .05em; text-transform: uppercase;

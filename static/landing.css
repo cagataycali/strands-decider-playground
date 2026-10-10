@@ -1,6 +1,6 @@
-/* landing.css -- LANE LANDING. Hero, proof row, how-to-use CTA, model row, footer.
+/* landing.css -- landing sections: hero, proof row, how-to-use CTA, model row, footer.
    Builds only on tokens.css (strands system: flat black/white, one green, 1px, rx 8, mono headings).
-   Scoped under .ld so nothing leaks into DESIGN's components. Selectors carry .gradio-container
+   Scoped under .ld so nothing leaks into the app's components. Selectors carry .gradio-container
    where app.css sets !important on the same element (buttons, h1, a, code), so the landing wins by
    specificity, not by luck. */
 
@@ -101,7 +101,7 @@
 .ld-proof span { color: var(--muted); font-size: var(--fs-small); }
 .ld-proof strong span { color: inherit; font-size: inherit; }
 
-/* ---- section heads (match DESIGN's .sdp-section) ---- */
+/* ---- section heads (match app.css .sdp-section) ---- */
 .ld-sec { margin: 1.6rem 0 0.8rem; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .gradio-container .ld .ld-sec h2, .ld .ld-sec h2 { margin: 0; font-family: var(--sr-mono) !important; font-size: 1.1rem !important; font-weight: var(--w-semibold) !important; letter-spacing: var(--tracking-h); color: var(--fg) !important; }
 .ld .ld-sec .sub { color: var(--muted); font-family: var(--sr-mono); font-size: var(--fs-caption); letter-spacing: var(--tracking-caption); text-transform: uppercase; }

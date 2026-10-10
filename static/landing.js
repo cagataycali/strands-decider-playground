@@ -1,7 +1,7 @@
-// landing.js -- LANE LANDING. Scroll-to-ask, copy buttons, install tabs, proof count-up.
+// landing.js -- landing sections: scroll-to-ask, copy buttons, install tabs, proof count-up.
 // Rides launch(js=...) next to app.js (gr.HTML never runs <script>). Everything is delegated on
 // `document` in the capture phase, so it works no matter when Gradio inserts the markup and no
-// matter which lane's HTML the button sits in. Without JS the page still reads: numbers are
+// matter which section's HTML the button sits in. Without JS the page still reads: numbers are
 // printed, the first tab is open, the links are real anchors.
 (function () {
   if (window.__ldLandingLoaded) return;

@@ -1,7 +1,8 @@
-"""examples.py -- LANE EXAMPLES. Ability gallery for the Strands Decider Playground.
+"""The example gallery: one card per ability of the decider, click to fill the ask bar and run.
 
-Owns: space/examples/ (examples.json + images), space/static/examples.css, space/static/examples.js,
-and the `# --- LANE EXAMPLES ---` region of app.py. Nothing here touches answer().
+Data lives in examples/examples.json (+ images); the look in static/examples.css; the click
+handling in static/examples.js. `app.py` renders `gallery_html()` above the status line and
+listens on a hidden textbox for the clicked id. Nothing here touches answer().
 
 Public API
     load_examples()            -> dict (the parsed examples.json, measured blocks included)
@@ -12,13 +13,14 @@ Public API
                                   models (list[str] -- ONLY the vision models for vision_only examples)
     CSS / JS                   -> file contents for app.py to append to its launch(css=, js=)
 
-Standalone preview:  python -m examples --demo > ../lanes/EXAMPLES/demo.html   (run from space/)
+Standalone preview:  python examples.py --demo [--dark|--light] > demo.html
 """
 from __future__ import annotations
 
 import base64
 import html
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -32,6 +34,7 @@ _CACHE: dict | None = None
 
 
 def load_examples() -> dict:
+    """Parsed examples.json (cached)."""
     global _CACHE
     if _CACHE is None:
         _CACHE = json.loads(EX_JSON.read_text())
@@ -39,10 +42,12 @@ def load_examples() -> dict:
 
 
 def example_by_id(ex_id: str) -> dict | None:
+    """The example record with this id, or None."""
     return next((e for e in load_examples()["examples"] if e["id"] == ex_id), None)
 
 
 def image_path(ex: dict) -> Path | None:
+    """Absolute path of the example's image, if it has one."""
     return (EX_DIR / ex["image"]) if ex.get("image") else None
 
 
@@ -81,6 +86,7 @@ _TYPE_LABEL = {"noul": "yes/no", "choice": "choice", "score": "score"}
 
 
 def _thumb(ex: dict) -> str:
+    """Inline 96 px thumbnail of the example image (data URI), or an empty string."""
     p = image_path(ex)
     if p is None or not p.exists():
         return ""
@@ -90,6 +96,7 @@ def _thumb(ex: dict) -> str:
 
 
 def _fmt(v: Any, nd: int = 3) -> str:
+    """Fixed-point text; non-numbers are escaped as-is."""
     try:
         return f"{float(v):.{nd}f}"
     except (TypeError, ValueError):
@@ -136,6 +143,7 @@ def _answer_html(qid: str, a: dict, q: dict | None) -> str:
 
 
 def _card(ex: dict) -> str:
+    """One gallery card: title, type chips, request, the measured answer (if any), what it teaches."""
     qs = ex["questions"]
     chips = "".join(f'<span class="sdx-chip t-{E(q["type"])}">{E(_TYPE_LABEL.get(q["type"], q["type"]))}</span>' for q in qs)
     if ex.get("golden"):
@@ -165,14 +173,17 @@ def _card(ex: dict) -> str:
         for i, q in enumerate(qs):
             qmap[f'{q["type"]}_{sum(1 for p in qs[:i] if p["type"] == q["type"])}'] = q
         ans = "".join(_answer_html(qid, a, qmap.get(qid)) for qid, a in m["answers"].items())
-        meta = []
+        # Caption: model + date + token count. Latency and device are left out on purpose: they
+        # describe the machine the recording ran on, not the example.
+        parts = ["measured", str(m.get("model") or "").replace("strands-decider-", "") or "decider"]
+        day = re.search(r"\d{4}-\d{2}-\d{2}", str(m.get("label", "")))
+        if day:
+            parts.append(day.group(0))
         if m.get("input_tokens") is not None:
-            meta.append(f'{m["input_tokens"]} input tokens')
-        if m.get("latency_ms") is not None:
-            meta.append(f'{float(m["latency_ms"]):.0f} ms{" (cold)" if m.get("cold") else ""}')
-        lab = str(m.get("label", "measured")).replace(", ", " · ").replace("strands-decider-", "")
-        measured = (f'<div class="sdx-measured"><div class="cap" title="{E(m.get("label", ""))}">{E(lab)}'
-                    + (f' · {" · ".join(meta)}' if meta else "") + f'</div>{ans}</div>')
+            parts.append(f'{m["input_tokens"]} input tokens')
+        title = f'recorded through app.answer() on {m.get("model", "")}'
+        measured = (f'<div class="sdx-measured"><div class="cap" title="{E(title)}">{E(" · ".join(parts))}'
+                    f'</div>{ans}</div>')
     elif m.get("error"):
         measured = f'<div class="sdx-measured err"><div class="cap">not measured</div><div class="line">{E(m["error"])}</div></div>'
     else:
@@ -194,6 +205,7 @@ def _card(ex: dict) -> str:
 
 
 def gallery_html() -> str:
+    """The whole gallery grouped by family, as server-rendered HTML."""
     data = load_examples()
     by_fam: dict[str, list[dict]] = {}
     for ex in data["examples"]:
@@ -215,15 +227,18 @@ def gallery_html() -> str:
 
 
 def _read(name: str) -> str:
+    """Text of a file under static/, empty if missing."""
     p = STATIC / name
     return p.read_text() if p.exists() else ""
 
 
 def css() -> str:
+    """static/examples.css for app.py's launch(css=...)."""
     return _read("examples.css")
 
 
 def js() -> str:
+    """static/examples.js for app.py's launch(js=...)."""
     return _read("examples.js")
 
 
@@ -233,6 +248,7 @@ def js() -> str:
 
 
 def demo_html(scheme: str = "auto") -> str:
+    """Standalone HTML of the gallery (scheme = auto | dark | light)."""
     tokens = _read("tokens.css")
     cls = {"dark": ' class="dark"', "light": "", "auto": ""}[scheme]
     return (

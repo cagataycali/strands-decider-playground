@@ -1,16 +1,20 @@
-"""app.py -- STRANDS DECIDER PLAYGROUND.
+"""Strands Decider Playground -- the Gradio app.
 
-One decision question -> every post-tuned StrandsAgents decider answers it side by side,
-with per-option probabilities, calibrated confidence, the model's own published evals, and
+One decision question goes to every public StrandsAgents decider; each answers side by side
+with a probability per option, a calibrated confidence, the model's own published evals and
 the measured compute cost of the call.
 
-LANE APP owns this file. `metrics.py` is owned by LANE METRICS and is imported, never edited.
+How the pieces fit:
+  * `registry.py` reads the model list live from the Hub at start (public repos under the org
+    prefix -- there is no hardcoded list), plus each repo's config and `eval/**/summary.json`.
+  * `runner.py` loads a model through `cache.py`, answers the questions and measures the call
+    with `metrics.py`.
+  * `answer()` below is the headless entry point: the same dict the UI renders, no browser needed.
+  * Everything after the "rendering" line turns that dict into HTML; `static/app.js` animates
+    it after insertion. `landing.py`, `examples.py` and `viz.py` render their own sections
+    from the same dict.
 
-The model list is read LIVE from the org at start (registry.list_decider_models) -- there is
-no hardcoded list anywhere in this app, which is how the two models the owner's brief did not
-know about (2B-gemma4, 4b-gemma4) show up on their own.
-
-Headless entry point, so the app is testable without a browser:
+Headless use:
     from app import answer
     answer(state, image, question_specs, model_names) -> dict
 """
@@ -23,9 +27,9 @@ import time
 import traceback
 from typing import Any
 
-# Set BEFORE metrics is imported: its spin-sampler at the 0.0002 s default inflates CPU
-# latency 3.71x (measured, COORDINATION 01:48Z). 0.01 s removes the inflation; the cost is
-# peak-memory resolution, so the poll interval is printed on every card.
+# Set BEFORE metrics is imported: its spin-sampler at the default interval inflates CPU
+# latency several-fold (measured 3.71x). 0.01 s removes the inflation; the cost is peak-memory
+# resolution, so the poll interval is printed on every card.
 os.environ.setdefault("METRICS_SAMPLE_S", "0.01")
 
 import gradio as gr  # noqa: E402
@@ -34,9 +38,7 @@ import metrics as M  # noqa: E402
 import runner  # noqa: E402
 from registry import ModelInfo, active_params, load_registry  # noqa: E402
 
-# $/h straight from RESEARCH/DESIGN.md 3f (parsed from huggingface.co/pricing, not typed here
-# as guesses). ZeroGPU is an RTX PRO 6000 Blackwell at 48 GB (large) / 96 GB (xlarge) and is
-# FREE -- its 96 GB tier is bigger than the A100-large this program was ready to pay for.
+# Hourly prices from huggingface.co/pricing, used only to price a measured latency.
 HARDWARE: dict[str, float] = {
     "CPU Basic — free": 0.0,
     "ZeroGPU (RTX PRO 6000 Blackwell, ≤96 GB) — free": 0.0,
@@ -53,6 +55,7 @@ _ACTIVE: dict[str, dict] = {}
 
 
 def active_for(info: ModelInfo) -> dict:
+    """Active-parameter record for a model's base, fetched once per base."""
     if info.base_model not in _ACTIVE:
         _ACTIVE[info.base_model] = active_params(info.base_model)
     return _ACTIVE[info.base_model]
@@ -69,6 +72,7 @@ REGISTRY_ERROR: str | None = None
 
 
 def load_models() -> list[ModelInfo]:
+    """Read the registry (public repos + evals) into REGISTRY; a failure lands in REGISTRY_ERROR."""
     global REGISTRY, REGISTRY_ERROR
     try:
         REGISTRY = load_registry(with_evals=True)
@@ -79,14 +83,17 @@ def load_models() -> list[ModelInfo]:
 
 
 def by_name(name: str) -> ModelInfo | None:
+    """Look a model up by short name or full repo id."""
     return next((m for m in REGISTRY if m.name == name or m.repo == name), None)
 
 
 def model_choices() -> list[str]:
+    """Short names of every listed model, in registry order."""
     return [m.name for m in REGISTRY]
 
 
 def vision_models() -> list[str]:
+    """Short names of the models that can read an image."""
     return [m.name for m in REGISTRY if m.vision]
 
 
@@ -165,9 +172,9 @@ def answer(
 
 
 # ---------------------------------------------------------------------------------
-# rendering -- LANE DESIGN owns everything below this line (layout + static/*).
-# Server renders static HTML; static/app.js animates it after insertion. Every number
-# shown is read from the result dict that `answer()` returned -- nothing is recomputed.
+# rendering. The server renders static HTML; static/app.js animates it after insertion.
+# Every number shown is read from the result dict that `answer()` returned -- nothing is
+# recomputed here.
 # ---------------------------------------------------------------------------------
 
 import html as _html  # noqa: E402
@@ -181,30 +188,23 @@ import transformers  # noqa: E402
 
 from registry import HIDDEN_PRIVATE, PUBLIC_ONLY  # noqa: E402
 
-# Lane modules (INTEGRATION RULE in BRIEF.md): each lane owns ONLY the lines inside its region.
-# --- LANE LANDING ---
-import landing  # noqa: E402  (space/landing.py + static/landing.*)
-# --- /LANE LANDING ---
-# --- LANE EXAMPLES ---
-import examples as EX  # noqa: E402  (space/examples.py + static/examples.*)
-# --- /LANE EXAMPLES ---
-# --- LANE VIZ ---
-import viz  # noqa: E402  (space/viz.py + static/viz.*)
-# --- /LANE VIZ ---
-# --- LANE BENCH ---
-import bench  # noqa: E402  (space/bench/ package: __init__ = UI/runner/board, jev.py scoring, tasks/, published/; static/bench.*)
-# --- /LANE BENCH ---
+# Section renderers: each is pure (dict -> HTML) and ships its own static/*.css + *.js.
+import landing  # noqa: E402  hero, proof row, how-to, model row, footer
+import examples as EX  # noqa: E402  the clickable example gallery
+import viz  # noqa: E402  animated SVG decision diagrams
+import bench  # noqa: E402  JevBench: picker, runner, board, errors (bench/ package)
 
 STATIC = Path(__file__).parent / "static"
 
 
 def _static(name: str) -> str:
+    """Text of a file under static/."""
     return (STATIC / name).read_text(encoding="utf-8")
 
 
-# strands-labs/robots origin/main docs/assets/img/mark.svg (the pixel frog, single colour) and
-# overrides/partials/wordmark.svg (pixel STRANDS, fill currentColor). Read from static/, inlined.
 def _svg(name: str, cls: str, extra: str = "") -> str:
+    """Inline an SVG from static/ with a class and aria-hidden (the frog mark and the wordmark
+    come from the strands-labs/robots docs)."""
     raw = _static(name)
     raw = re.sub(r"<!--.*?-->", "", raw, flags=re.S).strip()
     return re.sub(r"<svg\b", f'<svg class="{cls}" aria-hidden="true" {extra}', raw, count=1)
@@ -229,14 +229,17 @@ TIPS = {
 
 
 def E(s: Any) -> str:
+    """HTML-escape anything (None -> empty string)."""
     return _html.escape(str(s if s is not None else ""), quote=True)
 
 
 def _tip(label: str, key: str) -> str:
+    """A label carrying its one-sentence tooltip from TIPS."""
     return f'<span class="sdp-tip" tabindex="0" data-tip="{E(TIPS.get(key, ""))}">{E(label)}</span>'
 
 
 def _fmt(v: Any, nd: int = 4) -> str:
+    """Format a value for display: ints with separators, floats to `nd` places, None as a dash."""
     if isinstance(v, bool) or v is None:
         return "—" if v is None else str(v)
     if isinstance(v, int):
@@ -247,6 +250,7 @@ def _fmt(v: Any, nd: int = 4) -> str:
 
 
 def _num(v: Any) -> bool:
+    """True for a real number (bool excluded)."""
     return isinstance(v, (int, float)) and not isinstance(v, bool)
 
 
@@ -266,7 +270,7 @@ _LORA_R: dict[str, Any] = {}
 
 
 def lora_r(info: ModelInfo) -> Any:
-    """`lora_r` from the decider config the registry already fetched (local HF cache hit)."""
+    """LoRA rank from the decider config (a local Hub-cache hit after the registry read it)."""
     if info.repo in _LORA_R:
         return _LORA_R[info.repo]
     val = None
@@ -283,11 +287,13 @@ def lora_r(info: ModelInfo) -> Any:
 
 
 def base_short(info: ModelInfo | None) -> str:
+    """Base model name without the org prefix."""
     b = (info.base_model if info else "") or ""
     return b.split("/")[-1] or "unknown base"
 
 
 def model_label(info: ModelInfo | None) -> str:
+    """Card label: base + LoRA rank. The digits in a repo name are not a size."""
     if not info:
         return "unknown"
     r = lora_r(info)
@@ -300,7 +306,6 @@ def _short_name(info: ModelInfo | None, card_name: str) -> str:
         return card_name
     b = base_short(info).replace("gemma-4-", "g4-").replace("Qwen3.5-", "q3.5-").replace("-Base", "").replace("-it", "")
     r = lora_r(info)
-    import re
     ver = re.search(r"(v\d+(?:-\d+)?)$", info.name)  # a version tag, not a size
     return b + (f" r{r}" if r else "") + (f" {ver.group(1)}" if ver else "")
 
@@ -325,6 +330,7 @@ def ring_html(value: Any, label: str) -> str:
 
 
 def bars_html(probs: dict) -> str:
+    """Per-option probability bars, sorted by probability; the argmax is the accent."""
     ps = [(k, float(v)) for k, v in (probs or {}).items() if _num(v)]
     if not ps:
         return ""
@@ -343,6 +349,7 @@ def bars_html(probs: dict) -> str:
 
 
 def question_text(specs: list[dict], qids: list[str], qid: str) -> str:
+    """The instruction text of question `qid`, or an empty string."""
     try:
         i = qids.index(qid)
         return (specs[i].get("instructions") or "").strip()
@@ -351,6 +358,7 @@ def question_text(specs: list[dict], qids: list[str], qid: str) -> str:
 
 
 def answers_html(card: dict, specs: list[dict], qids: list[str]) -> str:
+    """One block per question: id, text, headline answer, confidence (or p(true)), bars."""
     out = []
     for qid, a in (card.get("answers") or {}).items():
         conf = a.get("confidence")
@@ -394,7 +402,8 @@ def memory_stack_svg(m: dict) -> str:
 
 
 def timeline_svg(load_s: Any, latency_ms: Any, warm: bool) -> str:
-    """Load vs inference on ONE linear axis -- the honest 52x picture."""
+    """Load time and inference latency on ONE linear axis, so a cold load is never mistaken for
+    a slow forward pass."""
     if not _num(latency_ms):
         return ""
     lat_s = float(latency_ms) / 1000.0
@@ -418,6 +427,7 @@ def timeline_svg(load_s: Any, latency_ms: Any, warm: bool) -> str:
 
 
 def compute_html(card: dict) -> str:
+    """The compute block: memory stack, load-vs-inference timeline, metric rows, method footnote."""
     m = card.get("metrics") or {}
     load = card.get("load") or {}
     ap = card.get("active_params") or {}
@@ -458,6 +468,7 @@ def compute_html(card: dict) -> str:
 
 
 def evals_html(info: ModelInfo | None) -> str:
+    """Published-eval badges, each linking to the exact summary.json it was read from."""
     ev = (info.evals if info else None) or {}
     hl = ev.get("headline") or []
     if not hl:
@@ -481,6 +492,7 @@ def evals_html(info: ModelInfo | None) -> str:
 
 
 def card_html(card: dict, info: ModelInfo | None, specs: list[dict], qids: list[str]) -> str:
+    """One finished model card: header with pills and ring, answers, compute, evals (or the error)."""
     err = card.get("error")
     ap = card.get("active_params") or {}
     pills = []
@@ -522,6 +534,7 @@ def card_html(card: dict, info: ModelInfo | None, specs: list[dict], qids: list[
 
 
 def skeleton_html(info: ModelInfo | None, name: str, state_text: str) -> str:
+    """Placeholder card shown while a model is queued or running."""
     return (
         '<article class="sdp-card skel in" aria-busy="true">'
         '<div class="head"><div class="title">'
@@ -533,6 +546,7 @@ def skeleton_html(info: ModelInfo | None, name: str, state_text: str) -> str:
 
 
 def grid_html(done: list[dict], pending: list[ModelInfo], specs: list[dict], qids: list[str], active: str | None) -> str:
+    """The card grid: finished cards first, then a skeleton per pending model (`active` = running now)."""
     parts = [card_html(c, by_name(c["name"]), specs, qids) for c in done]
     for m in pending:
         parts.append(skeleton_html(m, m.name, "loading and answering…" if m.name == active else "queued"))
@@ -540,11 +554,14 @@ def grid_html(done: list[dict], pending: list[ModelInfo], specs: list[dict], qid
 
 
 def status_html(kind: str, text: str, done: int = 0, total: int = 0) -> str:
+    """Status line with a dot (kind = live | ok | err | "") and an optional progress bar."""
     bar = (f'<span class="progress"><i data-sdp="progress" data-w="{100 * done / total:.1f}"></i></span>' if total else "")
     return f'<div class="sdp sdp-status"><span class="dot {kind}"></span><span>{E(text)}</span>{bar}</div>'
 
 
 def comparison_html(result: dict) -> str:
+    """Cross-model view: agreement strip (argmax per model, majority filled), small multiples of
+    the full distribution per question, and a footer with device, wall time and cache budget."""
     cards = result.get("cards") or []
     qids = result.get("question_ids") or []
     specs = result.get("question_specs") or []
@@ -624,6 +641,7 @@ def comparison_html(result: dict) -> str:
 
 
 def header_html() -> str:
+    """Header row (mark, wordmark, project tag) followed by the landing hero and proof row."""
     n, v = len(REGISTRY), len(vision_models())
     count = (f"{n} public models read live from the org at start · {v} read images · "
              "<kbd>Enter</kbd> runs · <kbd>Esc</kbd> clears" if not REGISTRY_ERROR
@@ -632,14 +650,12 @@ def header_html() -> str:
         '<div class="sdp"><header class="sdp-header">' + MARK_SVG
         + '<a href="https://strandsagents.com" target="_blank" rel="noopener" title="strandsagents.com">' + WORDMARK_SVG + "</a>"
         '<span class="project">/decider-playground</span><span class="tag" style="margin-left:auto">public checkpoints only</span></header></div>'
-        # --- LANE LANDING ---  (hero REPLACES DESIGN's .sdp-hero text block, per LANDING 02:19Z; header row above is kept.
-        #                        `count` = "N public models read live … Enter runs · Esc clears" is available to reuse.)
         + landing.hero_html(n) + landing.proof_html(n)
-        # --- /LANE LANDING ---
     )
 
 
 def footer_html() -> str:
+    """Status footer: public model count, the hardware this process runs on, library versions."""
     dev = runner.default_device()
     hw = {"cuda": (torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cuda"),
           "mps": f"Apple {platform.machine()} (MPS)", "cpu": f"{platform.machine()} CPU"}.get(dev, dev)
@@ -670,30 +686,22 @@ def _css_with_fonts() -> str:
 
 CSS = _css_with_fonts()
 JS = _static("app.js")
-# Loader hooks: gr.HTML cannot run <script>, so every lane's CSS/JS rides launch(css=CSS, js=JS). One line per lane.
-# --- LANE LANDING ---
+# gr.HTML cannot run <script>, so every section's CSS/JS rides launch(css=CSS, js=JS).
 CSS += "\n" + landing.LANDING_CSS
 JS += "\n" + landing.LANDING_JS
-# --- /LANE LANDING ---
-# --- LANE EXAMPLES ---
 CSS += "\n" + EX.css()
 JS += "\n" + EX.js()
-# --- /LANE EXAMPLES ---
-# --- LANE VIZ ---
 CSS += "\n" + _static("viz.css")
 JS += "\n" + _static("viz.js")
-# --- /LANE VIZ ---
-# --- LANE BENCH ---
 CSS += "\n" + bench.css()
 JS += "\n" + bench.js()
-# --- /LANE BENCH ---
 
 GOLDEN_Q = [("noul", "Does this convey urgency?", []),
             ("choice", "Which team should handle this?", ["billing", "sales", "retail"]),
             ("score", "How frustrated is the writer?", ["calm", "frustrated", "depressed"])]
 
 
-# --- LANE BENCH ---  (module-level helpers used by the Bench section inside build_ui)
+# Bench section helpers (used inside build_ui).
 _BENCH_LABELS: dict[str, str] = {}
 
 
@@ -708,7 +716,6 @@ def bench_estimate_html(names: list[str], scope_v: str, model_v: str, started: b
     lead = "started · " if started else ""
     return (f'<div class="sdp sdb-est">{lead}{n} tasks × {len(ms)} model{"s" if len(ms) != 1 else ""} = {n * len(ms)} calls · '
             f'about {bench._fmt_s(secs)} on {E(runner.default_device())} ({E(src)}) · one locked model call at a time</div>')
-# --- /LANE BENCH ---
 
 
 def make_theme() -> gr.themes.Base:
@@ -734,6 +741,7 @@ def make_theme() -> gr.themes.Base:
 
 
 def build_ui() -> gr.Blocks:
+    """Assemble the page and wire the handlers. Reads the registry first."""
     load_models()
     names = model_choices()
     vnames = vision_models()
@@ -777,17 +785,17 @@ def build_ui() -> gr.Blocks:
                 clear = gr.Button("Clear", elem_id="sdp-clear", scale=1)
                 unload = gr.Button("Unload models", scale=1)
 
-        # --- LANE EXAMPLES ---
-        gr.HTML(EX.gallery_html(), elem_classes=["sdp-plain"], elem_id="sdp-examples")  # LANDING's "See the examples" target
+        # Example gallery. #sdp-examples is the landing hero's "See the examples" target; a card click
+        # writes "<example-id>#<nonce>" into the hidden textbox (1x1 px via CSS), which fills and runs.
+        gr.HTML(EX.gallery_html(), elem_classes=["sdp-plain"], elem_id="sdp-examples")
         ex_pick = gr.Textbox(value="", visible=True, elem_id="sdx-pick", container=False, show_label=False,
-                             elem_classes=["sdx-hidden"])  # 1x1 px via CSS; JS writes "<example-id>#<nonce>" here
-        # --- LANE BENCH ---  (JevBench picker: click a task -> fills the ask bar + runs; gold shown only after the answers)
+                             elem_classes=["sdx-hidden"])
+        # JevBench picker: click a task -> fills the ask bar + runs; the gold answer is shown only after the answers.
         gr.HTML('<div class="sdp sdp-section" id="sdb-head"><h2>JevBench</h2><span class="sub">231 public tasks, straight from the benchmark — pick one, or run them all below</span></div>',
                 elem_classes=["sdp-plain"])
         gr.HTML(bench.picker_html(), elem_classes=["sdp-plain"], elem_id="sdb-picker-host")
         bench_pick = gr.Textbox(value="", visible=True, elem_id="sdb-pick", container=False, show_label=False, elem_classes=["sdb-hidden"])
         bench_tid = gr.State("")  # the JevBench task the ask bar currently holds ("" = a free question)
-        # --- /LANE BENCH ---
 
 
         status = gr.HTML(status_html("", "Ready."), elem_classes=["sdp-plain"])
@@ -797,15 +805,13 @@ def build_ui() -> gr.Blocks:
         gr.HTML('<div class="sdp sdp-section"><h2>Models</h2><span class="sub">labelled by base and LoRA rank — the digits in a repo name are not a size</span></div>',
                 elem_classes=["sdp-plain"])
         cards = gr.HTML(grid_html([], REGISTRY, [], [], None).replace("queued", "idle"), elem_classes=["sdp-plain"])
-        # --- LANE BENCH ---  (gold answer + JevBench score per model, rendered from `raw` AFTER the models answered)
+        # Gold answer + JevBench score per model, rendered from `raw` after the models answered.
         bench_gold = gr.HTML("", elem_classes=["sdp-plain"], elem_id="sdb-gold")
-        # --- /LANE BENCH ---
-        # --- LANE VIZ ---  (animated SVG decision diagrams; re-rendered from the result dict via raw.change below)
+        # Decision diagrams, re-drawn from the result dict whenever `raw` changes (see raw.change below).
         gr.HTML('<div class="sdp sdp-section" id="sdp-viz-head"><h2>Decisions</h2><span class="sub">every decider on one diagram — same choice, different certainty</span></div>',
                 elem_classes=["sdp-plain"])
         viz_out = gr.HTML("", elem_classes=["sdp-plain"], elem_id="sdp-viz")
-        # --- /LANE VIZ ---
-        # --- LANE BENCH ---  (run the bench + the activity board + common errors; see bench/__init__.py)
+        # Run the bench + the activity board + common errors (see bench/__init__.py).
         _BENCH_LABELS.update({m.name: f"{m.name.replace('strands-decider-', '')} · {model_label(m)}" for m in REGISTRY})
         gr.HTML('<div class="sdp sdp-section" id="sdb-board-head"><h2>JevBench board</h2><span class="sub">task × model — accent = correct, ink = wrong, opacity = how sure · published runs from the strands-decider repo are the italic rows</span></div>',
                 elem_classes=["sdp-plain"])
@@ -829,18 +835,15 @@ def build_ui() -> gr.Blocks:
         bench_errors = gr.HTML(bench.errors_html(bench.latest(), _BENCH_LABELS), elem_classes=["sdp-plain"], elem_id="sdb-errors")
         bench_sig = gr.State("")
         bench_timer = gr.Timer(3.0, active=True)
-        # --- /LANE BENCH ---
         with gr.Accordion("Raw result — every number on this page comes from here", open=False):
             raw = gr.JSON(value=None)
-        # --- LANE LANDING ---  (how-to-use / install CTA + footer; replace footer_html() with yours if you own the footer —
-        #                        exactly ONE footer on the page, keep data-public-count=N on it)
-        # LANDING: how-to-use CTA + model row above DESIGN's footer line (data-public-count stays there, the ONE <footer>),
-        # then the robots-style landing foot (CTA panel, install line, link columns, wordmark) below it.
+        # How-to-use + model row, then the status footer (the one <footer>, carrying data-public-count),
+        # then the landing foot: CTA panel, install line, link columns, wordmark.
         gr.HTML(landing.howto_html() + landing.models_html(REGISTRY) + footer_html() + landing.footer_html(), elem_classes=["sdp-plain"])
-        # --- /LANE LANDING ---
 
         # ---- question add/remove -------------------------------------------------
         def _set_n(n: int, delta: int):
+            """Show the first n question rows."""
             n = max(1, min(MAX_QUESTIONS, n + delta))
             return [n] + [gr.update(visible=(i + 1 < n)) for i in range(MAX_QUESTIONS - 1)]
 
@@ -860,6 +863,7 @@ def build_ui() -> gr.Blocks:
                      + [x for trio in zip(qtypes, qinstr, qopts) for x in trio])
 
         def _clear():
+            """Reset the ask bar, the status, the comparison and the cards."""
             out = ["", "noul", "", gr.update(choices=[], value=[]), 1]
             out += [gr.update(visible=False) for _ in range(MAX_QUESTIONS - 1)]
             for _ in range(1, MAX_QUESTIONS):
@@ -873,6 +877,8 @@ def build_ui() -> gr.Blocks:
 
         # ---- run: one model at a time, cards stream in as each finishes ----------
         def _run_stream(state_v, image_v, models_v, hardware_v, t1, i1, o1, n, *flat):
+            """Run the selected models one at a time, yielding (status, comparison, cards, raw) so
+            each card streams in as its model finishes. The final `raw` has `answer()`'s shape."""
             k = MAX_QUESTIONS - 1
             ts, ins, ops = flat[:k], flat[k:2 * k], flat[2 * k:3 * k]
             specs = [{"type": t1, "instructions": i1, "options": o1 or []}]
@@ -914,6 +920,7 @@ def build_ui() -> gr.Blocks:
                   [status, compare, cards, raw])
 
         def _fill_example(raw_id: str):
+            """Fill the ask bar from a clicked example (the output list mirrors `_ex_outputs`)."""
             ex_id = (raw_id or "").split("#", 1)[0].strip()
             ex = EX.example_by_id(ex_id)
             if ex is None:
@@ -938,21 +945,20 @@ def build_ui() -> gr.Blocks:
         ex_pick.input(_fill_example, [ex_pick], _ex_outputs).then(
             _run_stream, [state, image, models, hardware, q1type, q1ins, q1opts, nq] + qtypes + qinstr + qopts,
             [status, compare, cards, raw])
-        # --- /LANE EXAMPLES ---
 
-        # --- LANE VIZ ---  (`raw` holds the exact dict _run_stream/answer() produced; any path that sets it re-draws)
+        # `raw` holds the exact dict _run_stream produced; any path that sets it re-draws the diagrams.
         _LORA = {m.name: lora_r(m) for m in REGISTRY}
 
         def _viz(result):
+            """Diagrams from the result dict; a drawing bug must never hide the cards."""
             try:
                 return viz.render(result, _LORA) if result else ""
             except Exception as e:  # noqa: BLE001 -- a diagram bug must never hide the cards
                 return f'<div class="sdp sdp-foot">viz error: {E(f"{type(e).__name__}: {e}")}</div>'
 
         raw.change(_viz, [raw], [viz_out])
-        # --- /LANE VIZ ---
 
-        # --- LANE BENCH ---  (handlers; every model call goes through answer() exactly like the Decide button)
+        # Bench handlers; every model call goes through answer() exactly like the Decide button.
         def _fill_task(raw_id: str):
             tid = (raw_id or "").split("#", 1)[0].strip()
             f = bench.fill_values(tid)
@@ -995,7 +1001,7 @@ def build_ui() -> gr.Blocks:
             return bench.board_html(j, _BENCH_LABELS), bench_estimate_html(names, scope_v, model_v, started=True)
 
         # Bench handlers are pure-Python renders (the model calls happen in the Job thread, which takes the runner lock itself),
-        # so they get their own queue lane: a board poll or a column click must never wait behind a 7-model Decide.
+        # so they get their own queue: a board poll or a column click must never wait behind a 7-model Decide.
         bench_run.click(_bench_start, [bench_scope, bench_model], [bench_board, bench_est], concurrency_id="bench-ui", concurrency_limit=8)
         bench_cancel.click(lambda: (bench.cancel_live(), bench.board_html(bench.latest(), _BENCH_LABELS))[1], None, bench_board, concurrency_id="bench-ui", concurrency_limit=8)
         bench_scope.change(lambda sc, mo: bench_estimate_html(names, sc, mo), [bench_scope, bench_model], bench_est, concurrency_id="bench-ui", concurrency_limit=8)
@@ -1029,17 +1035,16 @@ def build_ui() -> gr.Blocks:
                     f'a sleeping Space will not fire it (this a100 Space does not sleep unless configured to)</div>')
 
         bench_sched_on.change(_bench_sched, [bench_sched_on, bench_sched_at], bench_est, concurrency_id="bench-ui", concurrency_limit=8)
-        # --- /LANE BENCH ---
 
     return demo
 
 
 if __name__ == "__main__":
     demo = build_ui()
-    # default_concurrency_limit=1: Gradio serves on a thread pool and concurrent model
-    # calls crash the Metal encoder. The lock in cache.py is the real guard; this keeps the
-    # queue from piling requests up behind it.
-    # Gradio 6: css/js/head belong to launch(), not Blocks(); show_api was removed.
+    # default_concurrency_limit=1: Gradio serves on a thread pool, and model calls must not
+    # overlap (unsafe on MPS, unattributable everywhere). The lock in cache.py is the real
+    # guard; this keeps the queue from piling requests up behind it.
+    # Gradio 6: css/js/theme belong to launch(), not Blocks().
     demo.queue(default_concurrency_limit=1).launch(
         server_name=os.environ.get("GRADIO_SERVER_NAME", "127.0.0.1"),
         server_port=int(os.environ.get("GRADIO_SERVER_PORT", "7860")),

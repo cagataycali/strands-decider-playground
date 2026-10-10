@@ -1,4 +1,4 @@
-// viz.js -- LANE VIZ. Animates the SVG diagrams space/viz.py renders, after they enter the
+// viz.js -- animates the SVG diagrams viz.py renders, after they enter the
 // DOM (gr.HTML swaps innerHTML on every yield). Same pattern as static/app.js: the server
 // draws the 0-state, this file flips each element to its value. Numbers count up through
 // app.js's own [data-sdp="count"] handler -- NOT duplicated here; if app.js is absent the

@@ -1,24 +1,20 @@
-"""cache.py -- the base-keyed LRU model cache from RESEARCH/DESIGN.md section 4.
+"""The model cache: which deciders stay loaded, which get evicted, and what a load cost.
 
-OWNED BY LANE APP. Implements the signatures DESIGN.md 4d publishes, with two honest
-deviations that are REPORTED, not hidden (program LAW 4 -- never publish a number or a
-behaviour you cannot reproduce):
+Engines are cached per (repo, device, mode) and the admission/eviction accounting is done per
+BASE model, because the base weights are what fill a device. Two things are reported rather
+than hidden, so no card claims a saving that did not happen:
 
-  * `base_hit` / adapter hot-swap. DESIGN 4a wants one resident torso with LoRA adapters
-    hot-swapped on it. `strands_decider.infer.load_engine(repo)` builds the torso, the LoRA
-    and the pointer head together and exposes no "attach a different adapter to this torso"
-    entry point, so a true shared-torso swap would mean reaching into library internals.
-    This cache therefore caches ENGINES per (repo, device, mode) and does its ADMISSION and
-    EVICTION accounting per BASE, which is what the 48 GB budget actually needs. When two
-    repos share a base, `base_hit` is reported **False** and `shared_base_note` says so.
-    Nothing claims a saving that did not happen.
+  * Adapter hot-swap does not exist here. `strands_decider.infer.load_engine(repo)` builds the
+    torso, the LoRA and the pointer head together and exposes no "attach a different adapter
+    to this torso" entry point. When two repos share a base, `base_hit` is reported **False**
+    and `shared_base_note` says the base was loaded again.
 
-  * `max_resident_bytes` / reserve. DESIGN 4c flags its 3 GiB reserve as this program's one
-    unmeasured number. On CUDA we replace it with `torch.cuda.mem_get_info()` at construction
-    (DESIGN 4c explicitly asks DEPLOY to do this); the fallback is recorded in `budget_source`.
+  * The memory budget is measured where it can be. On CUDA it is `torch.cuda.mem_get_info()`
+    at construction; on unified-memory machines it is `psutil.virtual_memory().total`; the
+    source used is recorded in `budget_source`.
 
-The LOAD/LATENCY RULE from DESIGN 4d is enforced by construction: `LoadReport.load_seconds`
-is wall time inside `get()` only, and no method here ever returns a number that adds it to a
+Load time and inference latency are kept apart by construction: `LoadReport.load_seconds` is
+wall time inside `get_detailed()` only, and no method here returns a number that adds it to a
 forward latency.
 """
 
@@ -32,25 +28,29 @@ from typing import Any
 
 import torch
 
-# One process-wide lock: DESIGN 4e. Concurrent requests crash the Metal encoder, and on CUDA
-# it is what makes load_seconds / peak memory / latency attributable to ONE request.
+# One process-wide lock around every load and forward. Concurrent model calls are unsafe on
+# MPS, and on any device the lock is what makes load time, peak memory and latency
+# attributable to ONE request.
 INFER_LOCK = threading.Lock()
 
 _GIB = 2 ** 30
 
 
 class ModelTooLargeError(RuntimeError):
+    """The base weights plus the reserve exceed this device's whole budget."""
+
     def __init__(self, repo: str, needed: int, budget: int):
         self.repo, self.needed, self.budget = repo, needed, budget
         super().__init__(
-            f"{repo} needs {needed / _GIB:.3f} GiB of base weights but the budget is "
-            f"{budget / _GIB:.3f} GiB -- it cannot be resident on this device at all. "
-            "DESIGN 3c: 26B-A4B does not fit 48 GB under either VRAM convention."
+            f"{repo} needs {needed / _GIB:.3f} GiB (base weights + reserve) but this device's "
+            f"budget is {budget / _GIB:.3f} GiB -- it cannot be resident here at all."
         )
 
 
 @dataclass(frozen=True)
 class LoadReport:
+    """What one `get_detailed()` / `plan()` call did or would do. Times are seconds."""
+
     repo: str
     base_model: str
     was_cached: bool
@@ -63,7 +63,7 @@ class LoadReport:
     evicted: tuple = ()
     resident_bytes_after: int = 0
     device: str = "cuda"
-    # --- additions, so the deviations above are visible in the data, not just the docstring
+    # the two reported deviations from the module docstring, visible in the data
     shared_base_note: str | None = None
     base_bytes: int = 0
     exclusive: bool = False
@@ -71,6 +71,7 @@ class LoadReport:
 
 
 def _dtype_width(name: str) -> int:
+    """Bytes per element for a safetensors dtype name (BF16 -> 2, F32 -> 4, ...)."""
     n = name.upper()
     if "BF16" in n or "F16" in n or "FP16" in n or "I16" in n:
         return 2
@@ -104,7 +105,7 @@ class ModelCache:
         if max_resident_bytes is None:
             total = vram_bytes
             if total is None and device == "cuda" and torch.cuda.is_available():
-                free, total = torch.cuda.mem_get_info()  # DESIGN 4c asks for exactly this
+                free, total = torch.cuda.mem_get_info()
                 self.budget_source = f"torch.cuda.mem_get_info total={total}"
             elif total is None:
                 # MPS/CPU: unified memory. psutil total is the honest ceiling here.
@@ -130,6 +131,7 @@ class ModelCache:
     # ---- cheap introspection ------------------------------------------------------
 
     def base_of(self, repo: str) -> str:
+        """Base model id of a decider repo (read from its config once)."""
         if repo not in self._base_of:
             from registry import describe_model
 
@@ -140,8 +142,8 @@ class ModelCache:
         """Measured bf16 RESIDENT weight bytes of the base, computed live.
 
         params x dtype width from model_info().safetensors -- not the on-disk file size,
-        which also carries the safetensors header (+0.0026%, COORDINATION 01:40Z), and not
-        a flat params*2, which would misprice Qwen3.5-2B-Base (mixed F32 + BF16).
+        which also carries the safetensors header, and not a flat params*2, which would
+        misprice a mixed-dtype base such as Qwen3.5-2B-Base (F32 + BF16).
         """
         base = repo_or_base if "/" not in repo_or_base or repo_or_base.startswith(
             ("Qwen/", "google/", "meta-llama/")
@@ -156,19 +158,23 @@ class ModelCache:
         return self._bytes[base]
 
     def is_exclusive(self, repo: str) -> bool:
-        """DESIGN 4b: a base over half the budget evicts everything else."""
+        """A base over half the budget evicts everything else when it loads."""
         return self.bytes_of(self.base_of(repo)) > self.max_resident_bytes / 2
 
     def resident(self) -> list[str]:
+        """Resident base ids, oldest first."""
         return list(self._base_lru)
 
     def resident_bytes(self) -> int:
+        """Weight bytes of every resident base."""
         return sum(self.bytes_of(b) for b in self._base_lru)
 
     def pin(self, repo: str) -> None:
+        """Protect a repo's base from eviction."""
         self._pinned.add(self.base_of(repo))
 
     def unpin(self, repo: str) -> None:
+        """Undo `pin()`."""
         self._pinned.discard(self.base_of(repo))
 
     def _key(self, repo: str, mode: str) -> str:
@@ -218,11 +224,13 @@ class ModelCache:
     # ---- the real call ------------------------------------------------------------
 
     def get(self, repo: str, mode: str = "text") -> tuple[Any, float, bool]:
+        """Simple form of `get_detailed()`: (engine, load_seconds, was_cached)."""
         engine, rep = self.get_detailed(repo, mode)
         return engine, rep.load_seconds, rep.was_cached
 
     def get_detailed(self, repo: str, mode: str = "text") -> tuple[Any, LoadReport]:
-        """Caller MUST hold INFER_LOCK (DESIGN 4e)."""
+        """Return the engine for `repo` (mode = "text" | "vision"), loading and evicting as
+        needed, with a LoadReport of what happened. The caller MUST hold INFER_LOCK."""
         base = self.base_of(repo)
         bb = self.bytes_of(base)
         key = self._key(repo, mode)
@@ -260,9 +268,9 @@ class ModelCache:
                 from strands_decider.infer import load_engine
 
                 engine = load_engine(repo, device=self.device)
-            # metrics._around() reads `box.model` to do its parameter+buffer walk. On CPU it
-            # MUST have it: METRICS measured the RSS delta swinging 5204-7509 MB for the same
-            # 2B model, so without this `weight_bytes` is UNAVAILABLE rather than wrong.
+            # metrics' baseline reads `box.model` to do its parameter+buffer walk. On CPU it
+            # MUST have it: the RSS delta was measured swinging 5204-7509 MB for the same 2B
+            # model, so without this `weight_bytes` is UNAVAILABLE rather than wrong.
             b.model = getattr(engine, "model", None)
         load_s = time.perf_counter() - t0
         self._engines[key] = {"engine": engine, "baseline": b.result, "base": base, "repo": repo}
@@ -281,17 +289,20 @@ class ModelCache:
         return engine, rep
 
     def baseline_of(self, repo: str, mode: str = "text") -> dict | None:
+        """The post-load memory baseline recorded when this engine was loaded."""
         e = self._engines.get(self._key(repo, mode))
         return e["baseline"] if e else None
 
     # ---- eviction ----------------------------------------------------------------
 
     def _touch(self, base: str) -> None:
+        """Mark a base most-recently-used."""
         if base in self._base_lru:
             self._base_lru.remove(base)
         self._base_lru.append(base)
 
     def _admit(self, base: str, bb: int, *, exclusive: bool) -> list[str]:
+        """Make room for `bb` bytes of `base`; returns the bases evicted."""
         evicted: list[str] = []
         if exclusive:
             for b in list(self._base_lru):
@@ -299,7 +310,7 @@ class ModelCache:
                     self.evict(b)
                     evicted.append(b)
             return evicted
-        # strict LRU, ties by largest bytes first (DESIGN 4b)
+        # strict LRU, ties by largest bytes first
         while self._base_lru and self.resident_bytes() + bb > self.max_resident_bytes:
             cand = [b for b in self._base_lru if b not in self._pinned and b != base]
             if not cand:
@@ -312,6 +323,7 @@ class ModelCache:
         return evicted
 
     def evict(self, base_model: str) -> int:
+        """Drop every engine on `base_model`; returns the bytes freed."""
         freed = 0
         for key in list(self._base_keys.get(base_model, set())):
             self._engines.pop(key, None)
@@ -323,6 +335,7 @@ class ModelCache:
         return freed
 
     def clear(self) -> int:
+        """Drop every engine; returns the bytes freed."""
         freed = sum(self.bytes_of(b) for b in list(self._base_lru))
         self._engines.clear()
         self._base_keys.clear()
@@ -332,6 +345,7 @@ class ModelCache:
 
     @staticmethod
     def _gc() -> None:
+        """Collect and release cached device memory after an eviction."""
         import gc
 
         gc.collect()
@@ -341,6 +355,7 @@ class ModelCache:
             torch.cuda.empty_cache()
 
     def describe_budget(self) -> dict:
+        """Budget, its source, and what is resident -- shown in the comparison footer."""
         return {
             "max_resident_bytes": self.max_resident_bytes,
             "max_resident_gib": round(self.max_resident_bytes / _GIB, 3),

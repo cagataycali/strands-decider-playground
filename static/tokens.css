@@ -1,6 +1,6 @@
 /* tokens.css -- design tokens of the Strands Decider Playground.
    Source of truth: strands-labs/robots origin/main b495049c9 docs/stylesheets/extra.css
-   (copied to lanes/DESIGN/robots-main/, summarised in lanes/DESIGN/DESIGN-SYSTEM.md).
+   (the tokens are copied, not linked, so the page cannot drift when that file moves).
    The strandsagents.com system: flat black-or-white surfaces, one green, 1px ink outlines,
    8px radius, JetBrains Mono headings over Space Grotesk text. No glass, no blur, no shadows.
    Two schemes: paper (light) and dark; dark follows prefers-color-scheme via Gradio's .dark. */

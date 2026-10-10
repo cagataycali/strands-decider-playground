@@ -1,4 +1,4 @@
-/* viz.css -- LANE VIZ. Animated SVG decision diagrams; builds only on tokens.css.
+/* viz.css -- animated SVG decision diagrams; builds only on tokens.css.
    Strands rules: 1px strokes, 8px rx, accent for the signal, fg for structure, muted labels,
    dashed groups, JetBrains Mono, no gradients / glow / shadows. Colours are token variables so
    the same markup is right in paper and dark. Everything lands instantly under reduced motion. */

@@ -1,6 +1,6 @@
-// examples.js -- LANE EXAMPLES. Makes the server-rendered gallery clickable + keyboard reachable.
+// examples.js -- makes the server-rendered example gallery clickable + keyboard reachable.
 // A click (or Enter/Space) on a card writes its example id into the hidden Gradio textbox
-// #sdx-pick and fires an input event; app.py's `# --- LANE EXAMPLES ---` region listens on that
+// #sdx-pick and fires an input event; app.py listens on that
 // textbox, fills the ask bar (state, question type, question, options, image, models) and runs.
 // Standalone (--demo) there is no textbox: the click just marks the card.
 (function () {

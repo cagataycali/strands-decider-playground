@@ -1,7 +1,8 @@
-"""viz.py -- animated SVG decision diagrams for the Strands Decider Playground.
+"""Animated SVG decision diagrams: every decider's answer on one picture.
 
-OWNED BY LANE VIZ. Pure functions: the dict `app.answer()` returns -> SVG/HTML strings.
-No Gradio, no torch, no model code, no I/O except the `--demo` CLI at the bottom.
+Pure functions: the dict `app.answer()` returns -> SVG/HTML strings. No Gradio, no torch, no
+model code, no I/O except the `--demo` CLI at the bottom. `app.py` calls `render()` whenever
+the raw result changes; `static/viz.css` + `static/viz.js` animate the markup.
 
 Input shape (app.answer(), runner.normalise_answer()):
     result = {"cards": [card...], "question_ids": [qid...], "question_specs": [...], ...}
@@ -56,6 +57,7 @@ E = html.escape
 
 
 def base_short(base_model: str | None) -> str:
+    """Compact base family: gemma-4-E4B-it -> g4-E4B, Qwen3.5-2B-Base -> q3.5-2B."""
     b = (base_model or "").split("/")[-1]
     return (b.replace("gemma-4-", "g4-").replace("Qwen3.5-", "q3.5-")
              .replace("-Base", "").replace("-it", "")) or "unknown"
@@ -75,6 +77,7 @@ def model_label(card: dict, lora: dict[str, Any] | None = None) -> str:
 
 
 def _f(x: Any, dec: int = 4) -> str:
+    """Fixed-point text, or a dash for anything that is not a finite number."""
     return f"{x:.{dec}f}" if isinstance(x, (int, float)) and math.isfinite(x) else "—"
 
 
@@ -131,12 +134,14 @@ def _conf(a: dict | None) -> float | None:
 
 
 def _radius(conf: float | None) -> float:
+    """Bubble radius in px from a confidence (5..16); 6 when there is none."""
     if conf is None:
         return 6.0
     return 5.0 + 11.0 * max(0.0, min(1.0, conf))
 
 
 def _title(s: str) -> str:
+    """An SVG <title> (native tooltip)."""
     return f"<title>{E(s)}</title>"
 
 
@@ -146,6 +151,8 @@ def _title(s: str) -> str:
 
 
 def consensus_svg(result: dict, qid: str, lora: dict[str, Any] | None = None) -> str:
+    """Diagram 1: each model's argmax rises to its option (vote count + probability mass per
+    column); score questions place bubbles on the ordered axis at the expected value."""
     rows = _answers(result, qid)
     answered = [(c, a) for c, a in rows if a and a.get("vote") is not None]
     qtype = next((a.get("type") for _, a in answered), None) or "choice"
@@ -398,6 +405,7 @@ def _consensus_score(rows, answered, qid, lora):
 
 
 def multiples_html(result: dict, qid: str, lora: dict[str, Any] | None = None) -> str:
+    """Diagram 2: one tiny bar chart per option, one bar per model in registry order."""
     rows = _answers(result, qid)
     qtype = next((a.get("type") for _, a in rows if a), None) or "choice"
     opts = _options([a for _, a in rows], qtype)
@@ -454,6 +462,7 @@ def multiples_html(result: dict, qid: str, lora: dict[str, Any] | None = None) -
 
 
 def scatter_svg(result: dict, qid: str, lora: dict[str, Any] | None = None) -> str:
+    """Diagram 3: confidence against active parameters (log x), with the 0.9 reference line."""
     rows = _answers(result, qid)
     qtype = next((a.get("type") for _, a in rows if a), None) or "choice"
     W, H = 720, 310
@@ -540,6 +549,7 @@ def _params(v: float) -> str:
 
 
 def agreement_svg(result: dict, qid: str, lora: dict[str, Any] | None = None) -> str:
+    """Diagram 4: NxN grid, a cell filled when two models share an argmax (3+ models only)."""
     rows = _answers(result, qid)
     answered = [(i + 1, c, a) for i, (c, a) in enumerate(rows) if a and a.get("vote") is not None]
     n = len(answered)
@@ -582,6 +592,7 @@ def agreement_svg(result: dict, qid: str, lora: dict[str, Any] | None = None) ->
 
 
 def _figure(kind: str, title: str, body: list[str], caption: str) -> str:
+    """<figure> wrapper with title and caption around one diagram."""
     return (f'<figure class="viz-fig viz-{kind}-fig" data-viz="fig">'
             f'<figcaption class="viz-title">{E(title)}</figcaption>'
             + "".join(body)
@@ -627,8 +638,9 @@ def render(result: dict, lora: dict[str, Any] | None = None, *, heading: bool = 
 # demo data (the real golden + one synthetic 7-model result) and the --demo CLI
 # ---------------------------------------------------------------------------------
 
-# The 7 PUBLIC StrandsAgents deciders (base, active params, lora_r) as measured in
-# lanes/RESEARCH/DESIGN.md section 2. Only labels and x-positions come from here.
+# The 7 public StrandsAgents deciders (base, active params, lora_r) at the time of writing.
+# DEMO ONLY: the app reads all of this live from the registry; here it supplies labels and
+# x-positions for the synthetic layout preview.
 PUBLIC_MODELS = [
     ("strands-decider-2B-hobson-v19", "Qwen/Qwen3.5-2B-Base", 2_274_069_824, 16),
     ("strands-decider-2B-hobson-v21", "Qwen/Qwen3.5-2B-Base", 2_274_069_824, 16),
@@ -658,7 +670,7 @@ def _norm(ans: dict) -> dict:
 
 
 def golden_result(golden: dict) -> dict:
-    """lanes/APP/golden.json (one real model, three real answers) -> the answer() dict shape."""
+    """A golden.json recording (one real model, three real answers) -> the answer() dict shape."""
     var = golden["variants"]["brief_no_trailing_space"]
     repo = golden["repo"]
     name = repo.split("/")[-1]
@@ -709,12 +721,13 @@ def synthetic_result() -> dict:
 
 
 def demo_lora() -> dict[str, int]:
+    """{name: lora_r} for the demo models."""
     return {name: r for name, _b, _a, r in PUBLIC_MODELS}
 
 
 def merge_results(results: list[dict]) -> dict | None:
     """Several answer() dicts (one question each, same models) -> one dict with every question.
-    Cards are matched by name; the first result's card order wins. Used for DEPLOY's live captures."""
+    Cards are matched by name; the first result's card order wins. Used for live captures in the demo."""
     results = [r for r in results if isinstance(r, dict) and r.get("cards")]
     if not results:
         return None
@@ -737,18 +750,19 @@ def merge_results(results: list[dict]) -> dict | None:
 
 
 def demo_results(golden: dict | None, live: list[dict] | None = None) -> list[tuple[str, dict]]:
+    """(title, result) pairs for the demo page: golden recording, live captures, synthetic layout."""
     out = []
     if golden:
-        out.append(("golden — the REAL result of lanes/APP/golden.json (1 model, CPU fp32)", golden_result(golden)))
+        out.append(("golden — the REAL result of a golden.json recording (1 model)", golden_result(golden)))
     merged = merge_results(live or [])
     if merged:
         out.append((f"live — REAL answers of all {len(merged['cards'])} public models captured from the Space "
-                    f"on {merged.get('device', '?')} (lanes/DEPLOY/all7_*.json)", merged))
+                    f"on {merged.get('device', '?')}", merged))
     out.append(("synthetic — 7 public models + one failed card, INVENTED numbers for layout only (not a measurement)", synthetic_result()))
     return out
 
 
-def demo_page(golden: dict | None, static_dir: str = "../../space/static", live: list[dict] | None = None) -> str:
+def demo_page(golden: dict | None, static_dir: str = "static", live: list[dict] | None = None) -> str:
     """Standalone HTML: tokens.css + viz.css/js + app.js (the shared counter)."""
     lora = demo_lora()
     sections = []
@@ -770,21 +784,25 @@ def demo_page(golden: dict | None, static_dir: str = "../../space/static", live:
 
 
 def _main(argv: list[str]) -> int:  # pragma: no cover -- CLI only
+    """python viz.py --demo [--golden golden.json] [--live DIR] [--static static] > demo.html
+
+    --golden  a golden.json recording (variants.brief_no_trailing_space.answers), optional
+    --live    a directory of captured result dicts (*.json, either the dict itself or {"raw": dict})
+    --static  path to static/ as the demo page should reference it (default "static")
+    """
+    import glob
     import json
     import os
     import sys
     if "--demo" not in argv:
-        print("usage: python -m space.viz --demo [--golden lanes/APP/golden.json] [--static ../../space/static] > lanes/VIZ/demo.html", file=sys.stderr)
+        print(_main.__doc__, file=sys.stderr)
         return 2
-    golden_path = argv[argv.index("--golden") + 1] if "--golden" in argv else os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lanes", "APP", "golden.json")
-    static = argv[argv.index("--static") + 1] if "--static" in argv else "../../space/static"
-    golden = json.load(open(golden_path)) if os.path.exists(golden_path) else None
+    golden_path = argv[argv.index("--golden") + 1] if "--golden" in argv else None
+    static = argv[argv.index("--static") + 1] if "--static" in argv else "static"
+    golden = json.load(open(golden_path)) if golden_path and os.path.exists(golden_path) else None
     live = []
-    dep = os.path.join(os.path.dirname(golden_path), "..", "DEPLOY")
-    for fn in ("all7_noul.json", "all7_choice.json", "all7_score.json"):
-        fp = os.path.join(dep, fn)
-        if os.path.exists(fp):
+    if "--live" in argv:
+        for fp in sorted(glob.glob(os.path.join(argv[argv.index("--live") + 1], "*.json"))):
             raw = json.load(open(fp))
             live.append(raw.get("raw") if isinstance(raw, dict) and "raw" in raw else raw)
     sys.stdout.write(demo_page(golden, static, live))
