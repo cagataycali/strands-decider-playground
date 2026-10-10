@@ -700,7 +700,7 @@ _BENCH_LABELS: dict[str, str] = {}
 def bench_estimate_html(names: list[str], scope_v: str, model_v: str, started: bool = False) -> str:
     """Wall-time estimate shown before a run, from measured medians when there are any (bench.estimate_s)."""
     if not _BENCH_LABELS:
-        _BENCH_LABELS.update({m.name: model_label(m) for m in REGISTRY})
+        _BENCH_LABELS.update({m.name: f"{m.name.replace('strands-decider-', '')} · {model_label(m)}" for m in REGISTRY})
     ms = names if model_v == "all public models" else [model_v]
     tier_v = scope_v.split(":", 1)[1].strip() if scope_v.startswith("tier:") else None
     n = len(bench.task_ids(tier_v))
@@ -806,7 +806,7 @@ def build_ui() -> gr.Blocks:
         viz_out = gr.HTML("", elem_classes=["sdp-plain"], elem_id="sdp-viz")
         # --- /LANE VIZ ---
         # --- LANE BENCH ---  (run the bench + the activity board + common errors; see bench/__init__.py)
-        _BENCH_LABELS.update({m.name: model_label(m) for m in REGISTRY})
+        _BENCH_LABELS.update({m.name: f"{m.name.replace('strands-decider-', '')} · {model_label(m)}" for m in REGISTRY})
         gr.HTML('<div class="sdp sdp-section" id="sdb-board-head"><h2>JevBench board</h2><span class="sub">task × model — accent = correct, ink = wrong, opacity = how sure · published runs from the strands-decider repo are the italic rows</span></div>',
                 elem_classes=["sdp-plain"])
         with gr.Row(elem_classes=["sdb-controls"]):

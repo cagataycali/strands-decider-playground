@@ -520,14 +520,19 @@ def _sched_loop() -> None:
 # ---------------------------------------------------------------------------------
 # the board (SVG) -- Strands drawing rules: 1px strokes, small radius, accent only for correct
 # ---------------------------------------------------------------------------------
-CELL, GAP, GGAP, LABEL_W, TOTALS_W, HEAD_H, FOOT_H = 11, 2, 9, 190, 230, 54, 44
+CELL, GAP, GGAP, LABEL_W, TOTALS_W, HEAD_H, FOOT_H = 11, 2, 9, 230, 230, 68, 44
 
 
-def _rows_from_job(job: Job | None, labels: dict[str, str]) -> list[dict]:
-    if not job:
-        return []
-    return [{"key": "run:" + m, "label": labels.get(m, m), "kind": "live" if job.running() else "run",
-             "sub": job.label, "results": job.results.get(m, {}), "model": m} for m in job.models]
+def _rows_from_job(job: Job | None, labels: dict[str, str], all_models: list[str] | None = None) -> list[dict]:
+    """One row per PUBLIC model (the board always shows all of them; a model outside the run has empty results ->
+    1px-outline 'not attempted' cells). Without a job the rows are empty outlines so the board reads the same on day one."""
+    names = list(all_models or [])
+    for m in (job.models if job else []):
+        if m not in names:
+            names.append(m)
+    kind = "live" if job and job.running() else "run"
+    return [{"key": "run:" + m, "label": labels.get(m, m), "kind": kind, "sub": job.label if job else "",
+             "results": (job.results.get(m, {}) if job else {}), "model": m} for m in names]
 
 
 def board_svg(rows: list[dict], n_models_for_foot: int | None = None) -> str:
@@ -622,8 +627,8 @@ def board_svg(rows: list[dict], n_models_for_foot: int | None = None) -> str:
     return "".join(out)
 
 
-def board_html(job: Job | None, labels: dict[str, str], show_history: bool = False) -> str:
-    rows = _rows_from_job(job, labels)
+def board_html(job: Job | None, labels: dict[str, str], show_history: bool = False, all_models: list[str] | None = None) -> str:
+    rows = _rows_from_job(job, labels, all_models or list(labels))
     pub = published_rows()
     rows += [r for r in pub if r["kind"] == "published"]
     hist = [r for r in pub if r["kind"] == "history"]
@@ -777,12 +782,17 @@ def errors_html(job: Job | None, labels: dict[str, str], include_published: bool
                    f'<div class="sdb-dim">most frequent wrong pattern</div><ul>{pat_txt}</ul></div>')
     out.append("</div>")
 
-    # (b) per task
+    # (b) per task — only meaningful across models: with < 3 rows "hard for everyone" and "one model knows" degenerate
+    # into "this model missed it" / "this model got it", so they are not computed (counted facts only, no padding).
     n = len(rows)
     hard = [(tid, sum(1 for r in rows if not r["results"][tid].get("correct"))) for tid in ids]
-    hard_all = [(tid, k) for tid, k in hard if k >= max(1, math.ceil(n * 5 / 7))]
-    one = [(tid, [r["label"] for r in rows if r["results"][tid].get("correct")][0]) for tid, k in hard if k == n - 1]
     thr = max(1, math.ceil(n * 5 / 7))
+    if n >= 3:
+        hard_all = [(tid, k) for tid, k in hard if k >= thr]
+        one = [(tid, [r["label"] for r in rows if r["results"][tid].get("correct")][0]) for tid, k in hard if k == n - 1]
+    else:
+        hard_all, one = [], []
+        out.append(f'<div class="sdb-dim">per-task panels need ≥ 3 models in the run (this one has {n}); the per-model panel above still counts.</div>')
     out.append(f'<div class="sdb-grid2"><div class="sdb-card"><div class="sdb-ct">hard for everyone <span class="sdb-dim">missed by ≥ {thr} of {n}</span></div>'
                + "".join(f'<div class="sdb-tline" data-task="{E(tid)}"><code>{E(tid)}</code> <span class="sdb-dim">{E(ts[tid].family)} · {k}/{n} wrong</span></div>'
                          for tid, k in sorted(hard_all, key=lambda x: -x[1])[:40])
