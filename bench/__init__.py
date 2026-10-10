@@ -28,6 +28,7 @@ from .paired_upstream import mcnemar_exact
 HERE = Path(__file__).resolve().parent.parent  # space root (this file is bench/__init__.py)
 RUNS = HERE / "bench" / "runs"
 PUBLISHED = HERE / "bench" / "published"
+BASELINE = HERE / "bench" / "baseline"  # the full 231 x 7 run captured once on the Space (bench/capture.py)
 STATIC = HERE / "static"
 DATASET_REPO = os.environ.get("BENCH_DATASET_REPO", "cagataydev/strands-decider-playground-bench")
 TIERS = ("easy", "standard", "hard")
@@ -181,7 +182,7 @@ def published_rows() -> list[dict]:
         if (d / "SOURCE.json").exists():
             src = json.loads((d / "SOURCE.json").read_text())
         rows.append({"key": "pub:" + d.name, "label": d.name.replace("strands-decider-", ""), "kind": "published",
-                     "sub": "published · " + (src.get("eval_dir") or "strands-decider repo"), "results": res,
+                     "sub": "published by strands-decider · " + (src.get("eval_dir") or "strands-decider repo"), "results": res,
                      "repo": src.get("repo")})
     # correct-only history
     hist: dict[str, dict[str, dict]] = defaultdict(dict)
@@ -224,6 +225,8 @@ class Job:
         self.error: str | None = None
         self.push: dict = {"status": "not pushed"}
         self.current: tuple[str, str] | None = None
+        self.kind = "run"  # "run" = started on this Space, "baseline" = vendored from bench/baseline/
+        self.info: dict = {}  # baseline meta (date, hardware, versions) when kind == "baseline"
 
     # -- persistence ------------------------------------------------------------
     def meta(self) -> dict:
@@ -273,6 +276,38 @@ class Job:
             job.finished = job.finished or time.time()
         return job
 
+    @classmethod
+    def load_baseline(cls, base_dir: Path | None = None) -> "Job | None":
+        """The vendored baseline (bench/baseline/results.jsonl + meta.json written by bench/capture.py vendor):
+        a finished Job whose rows were all computed on the Space. None when the files are missing."""
+        d = base_dir or BASELINE
+        try:
+            meta = json.loads((d / "meta.json").read_text())
+        except Exception:  # noqa: BLE001
+            return None
+        f = d / "results.jsonl"
+        if not f.exists():
+            return None
+        job = cls.__new__(cls)
+        job.run_id, job.models, job.tids = f"baseline-{meta.get('date', '')}", list(meta.get("models") or []), order()
+        job.label = f"baseline · {len(job.models)} models × {meta.get('n_tasks', len(job.tids))} tasks"
+        job.dir, job.results_path, job.meta_path = d, f, d / "meta.json"
+        job.cancel, job.thread = threading.Event(), None
+        job.started, job.finished = 0.0, 0.0
+        job.done, job.total = 0, int(meta.get("total") or len(job.models) * len(job.tids))
+        job.results, job.lat, job.error, job.current = {m: {} for m in job.models}, defaultdict(list), None, None
+        job.push = {"status": "vendored", "repo": meta.get("dataset"), "paths": meta.get("dataset_paths")}
+        job.kind, job.info = "baseline", meta
+        for line in f.open(encoding="utf-8"):
+            if line.strip():
+                r = json.loads(line)
+                job.results.setdefault(r["model"], {})[r["task_id"]] = r
+                job.done += 1
+                if isinstance(r.get("latency_ms"), (int, float)) and not r.get("cold"):
+                    job.lat[r["model"]].append(float(r["latency_ms"]))
+        job.started, job.finished = 0.0, float(meta.get("wall_s") or 0.0)
+        return job
+
     # -- state -----------------------------------------------------------------
     def running(self) -> bool:
         """True while the worker thread is alive."""
@@ -312,8 +347,8 @@ class Job:
         """The worker: one answer() per task x model, scored and appended; pushes at the end."""
         try:
             # task-major: a column fills across all models, like a day on the activity board.
-            # The runner's cache keeps every public model resident on the a100; on a laptop one
-            # model at a time is what fits anyway (BENCH_ORDER=model makes it model-major).
+            # The runner's cache keeps every public model resident on the Space's GPU
+            # (BENCH_ORDER=model makes it model-major instead).
             pairs = [(tid, m) for tid in self.tids for m in self.models]
             if os.environ.get("BENCH_ORDER") == "model":
                 pairs = [(tid, m) for m in self.models for tid in self.tids]
@@ -376,7 +411,7 @@ class Job:
         self.save_meta()
 
 
-OVERHEAD_S = 0.05  # request build + scoring per call, measured (<50 ms)
+OVERHEAD_S = 0.05  # request build + scoring per call (<50 ms)
 
 
 def hf_token() -> str | None:
@@ -432,12 +467,47 @@ def live() -> Job | None:
     return _LIVE if _LIVE and _LIVE.running() else None
 
 
+_BASELINE: Job | None = None
+
+
+def baseline() -> Job | None:
+    """The vendored baseline job (cached), or None when bench/baseline/ is absent."""
+    global _BASELINE
+    if _BASELINE is None:
+        _BASELINE = Job.load_baseline()
+    return _BASELINE
+
+
 def latest() -> Job | None:
-    """The live run, else the most recent finished one."""
+    """What the board shows when nothing is selected: the live run, else the newest run started on this
+    Space, else the vendored baseline."""
     js = jobs()
     if _LIVE:
         return _LIVE
-    return max(js.values(), key=lambda j: j.started) if js else None
+    if js:
+        return max(js.values(), key=lambda j: j.started)
+    return baseline()
+
+
+def history_choices() -> list[tuple[str, str]]:
+    """(label, key) pairs for the history dropdown: the baseline first, then runs on this Space, newest first."""
+    out: list[tuple[str, str]] = []
+    b = baseline()
+    if b:
+        out.append((f"baseline · {b.info.get('date', '')} · {b.done}/{b.total} cells", "baseline"))
+    for j in sorted(jobs().values(), key=lambda j: -j.started):
+        when = time.strftime("%Y-%m-%d %H:%MZ", time.gmtime(j.started))
+        out.append((f"{when} · {j.label} · {j.done}/{j.total}", "run:" + j.run_id))
+    return out
+
+
+def job_for(key: str | None) -> Job | None:
+    """Resolve a history key ("baseline" | "run:<id>" | ""/None = latest())."""
+    if not key:
+        return latest()
+    if key == "baseline":
+        return baseline() or latest()
+    return jobs().get(key.split(":", 1)[1]) if key.startswith("run:") else latest()
 
 
 def start_run(answer_fn: Callable[..., dict], models: list[str], tier_filter: str | None, label: str = "") -> Job | str:
@@ -467,23 +537,30 @@ def cancel_live() -> bool:
     return False
 
 
-def estimate_s(models: list[str], n_tasks: int, device: str) -> tuple[float, str]:
-    """Wall-time estimate BEFORE a run, from the last finished run's own per-model medians when
-    there is one, else a per-device default (labelled as such in the returned source string)."""
+def estimate_s(models: list[str], n_tasks: int) -> tuple[float, str]:
+    """Wall-time estimate BEFORE a run, from measured per-model medians only: the last finished run on this
+    Space when there is one, else the vendored baseline (captured on the Space). Models with no measurement
+    are counted at the median of the measured ones; nothing is assumed from another machine."""
     per: dict[str, float] = {}
+    b = baseline()
+    if b:
+        for m, t in b.totals().items():
+            if t.get("p50_ms"):
+                per[m] = t["p50_ms"]
+    src = "medians measured on this Space"
     for j in sorted(jobs().values(), key=lambda j: j.started):
         for m, t in j.totals().items():
             if t.get("p50_ms"):
                 per[m] = t["p50_ms"]
-    src = "measured in earlier runs"
+    known = [per[m] for m in models if m in per]
     missing = [m for m in models if m not in per]
+    if not known:
+        return 0.0, "no measured latency yet"
+    fill = statistics.median(known)
+    for m in missing:
+        per[m] = fill
     if missing:
-        # Rough per-call defaults by device class, used only until a run has produced medians.
-        default = {"cuda": 120.0, "mps": 360.0, "cpu": 700.0}.get(device, 500.0)
-        for m in missing:
-            per[m] = default
-        src = f"no measured median yet for {len(missing)} model(s), {default:.0f} ms/call assumed until the first run" + (
-            "; the rest measured" if len(missing) < len(models) else "")
+        src += f" ({len(missing)} model(s) at the measured median)"
     total = sum(per[m] / 1000.0 + OVERHEAD_S for m in models) * n_tasks
     return total, src
 
@@ -564,7 +641,7 @@ def _rows_from_job(job: Job | None, labels: dict[str, str], all_models: list[str
     for m in (job.models if job else []):
         if m not in names:
             names.append(m)
-    kind = "live" if job and job.running() else "run"
+    kind = "live" if job and job.running() else ("baseline" if job and job.kind == "baseline" else "run")
     return [{"key": "run:" + m, "label": labels.get(m, m), "kind": kind, "sub": job.label if job else "",
              "results": (job.results.get(m, {}) if job else {}), "model": m} for m in names]
 
@@ -625,7 +702,7 @@ def board_svg(rows: list[dict], n_models_for_foot: int | None = None) -> str:
                 cls, op = "sdb-bad sdb-inv", 1.0
             else:
                 cls, op = "sdb-bad", 0.3 + 0.7 * (1.0 - p)
-            if row["kind"] in ("live", "run"):
+            if row["kind"] in ("live", "run", "baseline"):
                 per_task_n[tid] += 1
             pred = r.get("predicted")
             tip = (f'{tid}|{row["label"]}|{E(pred if pred is not None else "—")}|{E(r.get("expected", ""))}|'
@@ -646,7 +723,7 @@ def board_svg(rows: list[dict], n_models_for_foot: int | None = None) -> str:
     src_n = per_task_n if per_task_n else Counter({tid: len(rows) for tid, _ in cols})
     src_c = Counter()
     for row in rows:
-        if per_task_n and row["kind"] not in ("live", "run"):
+        if per_task_n and row["kind"] not in ("live", "run", "baseline"):
             continue
         for tid, r in row["results"].items():
             if r.get("correct"):
@@ -687,6 +764,13 @@ def _status_html(job: Job | None) -> str:
         return ('<div class="sdb-status"><span class="sdb-dim">No run yet on this Space. The rows below are the published runs; '
                 'press Run to add live rows.</span></div>')
     pct = 100.0 * job.done / max(1, job.total)
+    if job.kind == "baseline":
+        i = job.info
+        txt = (f'baseline: {len(job.models)} models × {i.get("n_tasks", len(job.tids))} tasks, captured on {E(i.get("date", "?"))} '
+               f'on the Space ({E(i.get("hardware", "a100"))}, {E(i.get("dtype", "bf16"))})'
+               + (f' in {_fmt_s(float(i["wall_s"]))}' if i.get("wall_s") else "") + ' — run again below')
+        return (f'<div class="sdb-status"><div class="sdb-bar"><span style="width:{pct:.1f}%"></span></div>'
+                f'<div class="sdb-status-t">{txt} <span class="sdb-dim">· run {E(job.run_id)} · {job.done}/{job.total} cells</span></div></div>')
     if job.running():
         eta = job.eta_s()
         eta_s = (" · all cells done, pushing to the dataset…" if job.done >= job.total
@@ -744,7 +828,7 @@ def task_detail_html(tid: str, job: Job | None, labels: dict[str, str]) -> str:
         cls = "ok" if x.get("correct") else "bad"
         probs = x.get("probs") or {}
         ptxt = " ".join(f'{E(k)} {float(v):.2f}' for k, v in sorted(probs.items(), key=lambda kv: -float(kv[1]))[:5]) if probs else "—"
-        trs.append(f'<tr class="sdb-{cls}"><td>{E(r["label"])} <span class="sdb-dim">{E("· published" if r["kind"] == "published" else "")}</span></td>'
+        trs.append(f'<tr class="sdb-{cls}"><td>{E(r["label"])} <span class="sdb-dim">{E({"published": "· published", "baseline": "· baseline"}.get(r["kind"], ""))}</span></td>'
                    f'<td><b>{E(x.get("predicted") if x.get("predicted") is not None else (x.get("error") or "—"))}</b></td>'
                    f'<td>{float(x.get("p_gold") or 0):.3f}</td><td class="sdb-dim">{ptxt}</td>'
                    f'<td>{round(x["latency_ms"]) if x.get("latency_ms") is not None else "—"}</td></tr>')
@@ -780,11 +864,11 @@ def gold_html(tid: str | None, result: dict | None) -> str:
 def errors_html(job: Job | None, labels: dict[str, str], include_published: bool = True) -> str:
     """Common-error panels: per model, per task, models x tiers, and the paired McNemar test."""
     rows = _rows_from_job(job, labels)
-    if include_published and not rows:
+    if not rows:
         rows = [r for r in published_rows() if r["kind"] == "published"]
-        note = "computed from the 7 published runs (no live run on this Space yet)"
-    elif include_published:
-        note = f"computed from run {job.run_id if job else ''}"
+        note = "computed from the 7 published runs (no baseline or run on this Space)"
+    elif job and job.kind == "baseline":
+        note = f"computed from the baseline captured on the Space ({job.info.get('date', '')}, run {job.run_id})"
     else:
         note = f"computed from run {job.run_id if job else ''}"
     rows = [r for r in rows if r["results"]]

@@ -88,14 +88,30 @@ it, it is never re-implemented. Before any model ran, `bench/parity.py` re-score
 model repos' own published per-task records and reproduced their README totals exactly
 (180 / 167 / 207 of 231, zero per-task mismatches); run it yourself after touching `bench/`.
 
+**The baseline.** The board you see first is `bench/baseline/results.jsonl`: every public model ×
+all 231 tasks (7 × 231 = 1617 cells), captured once on the Space (A100 80 GB, bf16) and committed as
+data — nothing is computed on page load, and the per-cell latency is the forward pass the Space
+measured. `bench/baseline/meta.json` records the date, hardware, dtype, library versions, the dataset
+run ids and per-model totals. `bench/capture.py` is how it was made and how to redo it, from any
+machine with a token that can read the Space — no model is loaded locally:
+
+```bash
+python -m bench.capture baseline          # one run per model on the Space, merged into bench/baseline/
+python -m bench.capture run --scope "tier: easy" --model strands-decider-2B-qwen3.5-v1-2610 --out /tmp/easy
+```
+
+One run per model is deliberate: the 26B base is exclusive on an 80 GB card, so a task-major run
+over all 7 models reloads weights on every task (measured 9 s/cell); model-major is ~50 s per model.
+
 **Run again.** Pick a scope (full set or one tier) and a model (or all) and press **Run JevBench**.
 The run is a background job that calls `app.answer()` exactly as the Decide button does, appends one
 row per task × model to `bench/runs/<run_id>/results.jsonl`, and shows progress on the board with an
-ETA from its own measured pace. When it ends the folder is uploaded to a Hugging Face dataset so the
+ETA from medians measured on this Space. When it ends the folder is uploaded to a Hugging Face dataset so the
 numbers survive a restart — set `BENCH_DATASET_REPO=<user>/<dataset>` (default
 `cagataydev/strands-decider-playground-bench`; the upload is skipped without a token). A daily run
-can be scheduled from the same row. The italic rows on the board are the published runs from the
-strands-decider repo, for comparison.
+can be scheduled from the same row. The History dropdown lists the baseline first, then the runs made
+on this Space. The italic rows on the board are the published runs from the strands-decider repo,
+for comparison.
 
 ## Architecture
 
@@ -110,6 +126,7 @@ strands-decider repo, for comparison.
 | `metrics.py` | the measurement: memory, latency, tokens, clearly-labelled estimates; same keys on cuda/mps/cpu |
 | `landing.py` · `examples.py` · `viz.py` | hero + how-to + model row · clickable example gallery · decision diagrams |
 | `bench/` | vendored JevBench tasks, pinned scoring, runner, board, error panels, parity gate |
+| `bench/baseline/` · `bench/capture.py` | the shipped 231 × 7 baseline captured on the Space, and the CLI that captures it over the network |
 | `static/` | design tokens, stylesheets, motion, the frog mark and wordmark, self-hosted fonts |
 
 The design tokens come from the strands-labs/robots documentation: flat black or white surfaces,
