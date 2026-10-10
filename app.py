@@ -811,8 +811,8 @@ def build_ui() -> gr.Blocks:
                 elem_classes=["sdp-plain"])
         with gr.Row(elem_classes=["sdb-controls"]):
             bench_scope = gr.Dropdown(choices=["full JevBench (231)", "tier: easy", "tier: standard", "tier: hard"], value="full JevBench (231)",
-                                      label="Scope", scale=2)
-            bench_model = gr.Dropdown(choices=["all public models"] + names, value="all public models", label="Models", scale=2)
+                                      label="Scope", scale=2, elem_id="sdb-scope")
+            bench_model = gr.Dropdown(choices=["all public models"] + names, value="all public models", label="Models", scale=2, elem_id="sdb-model")
             bench_run = gr.Button("Run JevBench", variant="primary", elem_id="sdb-run", scale=1)
             bench_cancel = gr.Button("Cancel", scale=1)
             bench_hist = gr.Checkbox(value=False, label="show 32 correct-only history runs", scale=2)

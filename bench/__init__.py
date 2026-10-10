@@ -594,7 +594,7 @@ def board_svg(rows: list[dict], n_models_for_foot: int | None = None) -> str:
                 per_task_n[tid] += 1
             pred = r.get("predicted")
             tip = (f'{tid}|{row["label"]}|{E(pred if pred is not None else "—")}|{E(r.get("expected", ""))}|'
-                   f'{p:.3f}|{r.get("latency_ms") if r.get("latency_ms") is not None else ""}|{E(r.get("error") or "")}')
+                   f'{p:.3f}|{round(r["latency_ms"]) if r.get("latency_ms") is not None else ""}|{E(r.get("error") or "")}')
             out.append(f'<rect class="sdb-c {cls}" x="{cx}" y="{y}" width="{CELL}" height="{CELL}" rx="2" fill-opacity="{op:.3f}" '
                        f'data-task="{E(tid)}" data-row="{E(row["key"])}" data-tip="{tip}"/>')
         # right margin: totals
