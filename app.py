@@ -706,16 +706,17 @@ _BENCH_LABELS: dict[str, str] = {}
 
 
 def bench_estimate_html(names: list[str], scope_v: str, model_v: str, started: bool = False) -> str:
-    """Wall-time estimate shown before a run, from measured medians when there are any (bench.estimate_s)."""
+    """Wall-time estimate shown before a run, from medians measured on this Space only (bench.estimate_s)."""
     if not _BENCH_LABELS:
         _BENCH_LABELS.update({m.name: f"{m.name.replace('strands-decider-', '')} · {model_label(m)}" for m in REGISTRY})
     ms = names if model_v == "all public models" else [model_v]
     tier_v = scope_v.split(":", 1)[1].strip() if scope_v.startswith("tier:") else None
     n = len(bench.task_ids(tier_v))
-    secs, src = bench.estimate_s(ms, n, runner.default_device())
+    secs, src = bench.estimate_s(ms, n)
     lead = "started · " if started else ""
+    when = f"about {bench._fmt_s(secs)} ({E(src)})" if secs else E(src)
     return (f'<div class="sdp sdb-est">{lead}{n} tasks × {len(ms)} model{"s" if len(ms) != 1 else ""} = {n * len(ms)} calls · '
-            f'about {bench._fmt_s(secs)} on {E(runner.default_device())} ({E(src)}) · one locked model call at a time</div>')
+            f'{when} · one model call at a time</div>')
 
 
 def make_theme() -> gr.themes.Base:
@@ -823,6 +824,9 @@ def build_ui() -> gr.Blocks:
             bench_cancel = gr.Button("Cancel", scale=1)
             bench_hist = gr.Checkbox(value=False, label="show 32 correct-only history runs", scale=2)
         with gr.Row(elem_classes=["sdb-controls"]):
+            _hc = bench.history_choices()
+            bench_history = gr.Dropdown(choices=_hc, value=(_hc[0][1] if _hc else None), label="History", scale=2, elem_id="sdb-history",
+                                        info="the vendored baseline first, then runs started on this Space")
             bench_sched_on = gr.Checkbox(value=False, label="repeat daily (UTC)", scale=1)
             bench_sched_at = gr.Textbox(value="03:00", label="at HH:MM UTC", max_lines=1, scale=1)
             bench_est = gr.HTML(bench_estimate_html(names, "full JevBench (231)", "all public models"), elem_classes=["sdp-plain"])
@@ -997,32 +1001,35 @@ def build_ui() -> gr.Blocks:
         def _bench_start(scope_v, model_v):
             j = bench.start_run(answer, _bench_models(model_v), _bench_tier(scope_v), label=f"{scope_v} · {model_v}")
             if isinstance(j, str):
-                return gr.update(), f'<div class="sdp sdb-est">{E(j)}</div>'
-            return bench.board_html(j, _BENCH_LABELS), bench_estimate_html(names, scope_v, model_v, started=True)
+                return gr.update(), f'<div class="sdp sdb-est">{E(j)}</div>', gr.update()
+            return (bench.board_html(j, _BENCH_LABELS), bench_estimate_html(names, scope_v, model_v, started=True),
+                    gr.update(choices=bench.history_choices(), value="run:" + j.run_id))
 
         # Bench handlers are pure-Python renders (the model calls happen in the Job thread, which takes the runner lock itself),
         # so they get their own queue: a board poll or a column click must never wait behind a 7-model Decide.
-        bench_run.click(_bench_start, [bench_scope, bench_model], [bench_board, bench_est], concurrency_id="bench-ui", concurrency_limit=8)
+        bench_run.click(_bench_start, [bench_scope, bench_model], [bench_board, bench_est, bench_history], concurrency_id="bench-ui", concurrency_limit=8)
         bench_cancel.click(lambda: (bench.cancel_live(), bench.board_html(bench.latest(), _BENCH_LABELS))[1], None, bench_board, concurrency_id="bench-ui", concurrency_limit=8)
+        bench_history.change(lambda k, h: (bench.board_html(bench.job_for(k), _BENCH_LABELS, show_history=bool(h)), bench.errors_html(bench.job_for(k), _BENCH_LABELS)),
+                             [bench_history, bench_hist], [bench_board, bench_errors], concurrency_id="bench-ui", concurrency_limit=8)
         bench_scope.change(lambda sc, mo: bench_estimate_html(names, sc, mo), [bench_scope, bench_model], bench_est, concurrency_id="bench-ui", concurrency_limit=8)
         bench_model.change(lambda sc, mo: bench_estimate_html(names, sc, mo), [bench_scope, bench_model], bench_est, concurrency_id="bench-ui", concurrency_limit=8)
 
-        def _bench_tick(sig, hist):
-            j = bench.latest()
+        def _bench_tick(sig, hist, sel):
+            j = bench.job_for(sel)  # the selected history entry (the baseline by default); a started run selects itself
             new = f"{j.run_id if j else ''}:{j.done if j else 0}:{int(bool(j and j.running()))}:{int(bool(hist))}:{(j.push.get('status') if j else '')}"
             if new == sig:
                 return gr.update(), gr.update(), sig
             errs = gr.update() if (j and j.running() and j.done % 7) else bench.errors_html(j, _BENCH_LABELS)
             return bench.board_html(j, _BENCH_LABELS, show_history=bool(hist)), errs, new
 
-        bench_timer.tick(_bench_tick, [bench_sig, bench_hist], [bench_board, bench_errors, bench_sig], concurrency_id="bench-ui", concurrency_limit=8)
-        bench_hist.change(lambda h: bench.board_html(bench.latest(), _BENCH_LABELS, show_history=bool(h)), [bench_hist], bench_board, concurrency_id="bench-ui", concurrency_limit=8)
+        bench_timer.tick(_bench_tick, [bench_sig, bench_hist, bench_history], [bench_board, bench_errors, bench_sig], concurrency_id="bench-ui", concurrency_limit=8)
+        bench_hist.change(lambda h, k: bench.board_html(bench.job_for(k), _BENCH_LABELS, show_history=bool(h)), [bench_hist, bench_history], bench_board, concurrency_id="bench-ui", concurrency_limit=8)
 
-        def _bench_detail(raw_id: str):
+        def _bench_detail(raw_id: str, sel):
             tid = (raw_id or "").split("#", 1)[0].strip()
-            return bench.task_detail_html(tid, bench.latest(), _BENCH_LABELS) or gr.update()
+            return bench.task_detail_html(tid, bench.job_for(sel), _BENCH_LABELS) or gr.update()
 
-        bench_detail_pick.input(_bench_detail, [bench_detail_pick], [bench_detail], concurrency_id="bench-ui", concurrency_limit=8)
+        bench_detail_pick.input(_bench_detail, [bench_detail_pick, bench_history], [bench_detail], concurrency_id="bench-ui", concurrency_limit=8)
 
         def _bench_sched(on, at):
             try:

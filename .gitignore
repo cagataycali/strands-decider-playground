@@ -6,3 +6,5 @@ runs/
 .DS_Store
 *.egg-info/
 .gradio/
+bench/baseline/_runs/
+bench/baseline/_dl/
