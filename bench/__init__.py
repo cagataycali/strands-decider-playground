@@ -520,7 +520,7 @@ def _sched_loop() -> None:
 # ---------------------------------------------------------------------------------
 # the board (SVG) -- Strands drawing rules: 1px strokes, small radius, accent only for correct
 # ---------------------------------------------------------------------------------
-CELL, GAP, GGAP, LABEL_W, TOTALS_W, HEAD_H, FOOT_H = 11, 2, 9, 230, 230, 68, 44
+CELL, GAP, GGAP, LABEL_W, TOTALS_W, HEAD_H, FOOT_H = 11, 2, 9, 310, 230, 68, 44
 
 
 def _rows_from_job(job: Job | None, labels: dict[str, str], all_models: list[str] | None = None) -> list[dict]:
@@ -817,6 +817,9 @@ def errors_html(job: Job | None, labels: dict[str, str], include_published: bool
     out.append("</tbody></table>")
 
     # pairwise McNemar (b = A right & B wrong, c = A wrong & B right; exact two-sided p from paired_upstream)
+    if n < 2:
+        out.append('<div class="sdb-dim">pairwise McNemar needs ≥ 2 models in the run.</div></div>')
+        return "".join(out)
     out.append('<div class="sdb-ct">pairwise: row right, column wrong (b) / row wrong, column right (c) · exact McNemar p</div>')
     out.append('<table class="sdb-table sdb-pair"><thead><tr><th></th>' + "".join(f'<th>{E(r["label"])}</th>' for r in rows) + '</tr></thead><tbody>')
     for a in rows:

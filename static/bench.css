@@ -45,7 +45,7 @@
 .sdb-board .sdb-fam { fill: var(--muted); font-size: 9px; letter-spacing: .04em; }
 .sdb-board .sdb-tier { fill: none; stroke: var(--fg); stroke-width: 1; }
 .sdb-board .sdb-tier-l { fill: var(--fg); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; font-weight: 600; }
-.sdb-board .sdb-lab { fill: var(--fg); }
+.sdb-board .sdb-lab { fill: var(--fg); font-size: 10px; }
 .sdb-board .sdb-published .sdb-lab, .sdb-board .sdb-history .sdb-lab { fill: var(--muted); font-style: italic; }
 .sdb-board .sdb-tot { fill: var(--text); font-size: 10.5px; }
 .sdb-board .sdb-tot .sdb-num { fill: var(--fg); font-weight: 600; }
