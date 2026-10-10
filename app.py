@@ -644,7 +644,6 @@ def footer_html() -> str:
     return (
         '<div class="sdp"><footer class="sdp-footer" id="sdp-footer" data-public-count="' + str(n) + '">'
         + MARK_SVG + f'<span><b>{n} public model{"s" if n != 1 else ""}</b>'
-        + (f" · {len(HIDDEN_PRIVATE)} private not listed" if PUBLIC_ONLY and HIDDEN_PRIVATE else "")
         + '</span><span class="sep">·</span>'
         f"<span>hardware <b>{E(hw)}</b></span><span class=\"sep\">·</span>"
         f"<span>torch <b>{E(torch.__version__)}</b> · transformers <b>{E(transformers.__version__)}</b> · gradio <b>{E(gr.__version__)}</b></span>"
