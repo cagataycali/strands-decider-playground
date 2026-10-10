@@ -58,8 +58,10 @@
 .sdb-board .sdb-col { fill: transparent; cursor: pointer; }
 .sdb-board .sdb-col:hover, .sdb-board .sdb-col:focus { fill: var(--accent-soft); outline: none; }
 .sdb-board .sdb-foot { fill: var(--text-light); }
+.sdb-board .sdb-c { transform-box: fill-box; transform-origin: center; } /* on the element, not only in a keyframe: otherwise the
+   interpolated frames scale about the SVG origin and freshly filled cells appear displaced a row up (seen in the live shot) */
 .sdb-board .sdb-live .sdb-c.sdb-new { animation: sdb-in var(--t-reveal) var(--ease-out); }
-@keyframes sdb-in { from { transform: scale(.4); transform-box: fill-box; transform-origin: center; } to { transform: scale(1); } }
+@keyframes sdb-in { from { transform: scale(.4); } to { transform: scale(1); } }
 .sdb-legend { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-top: 8px; font-size: var(--fs-caption); color: var(--muted); font-family: var(--sr-mono); }
 .sdb-sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; border: 1px solid var(--hair); margin-right: 5px; vertical-align: -1px; }
 .sdb-sw.sdb-ok { background: var(--accent); border-color: var(--accent); }
