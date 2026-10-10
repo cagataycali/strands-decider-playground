@@ -1,0 +1,9 @@
+{
+ "repo": "StrandsAgents/strands-decider-2B-qwen3.5-v1-2610",
+ "eval_dir": "eval/jevbench-w4096",
+ "sha": "216d1ccb46a9e9b036eb9187b248db98480f77d4",
+ "n_correct": 180,
+ "brier_mean": 0.2803568132900433,
+ "ece": 0.07184632034632034,
+ "p50_s": 0.06972588200005703
+}

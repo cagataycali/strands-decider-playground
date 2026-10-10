@@ -1,0 +1,137 @@
+{
+ "kind": "baseline",
+ "run_id": "20261010T044945Z-0941+20261010T045041Z-f41d+20261010T045204Z-96e4+20261010T045250Z-f7e8+20261010T045328Z-da2f+20261010T045414Z-600d+20261010T045504Z-426f",
+ "label": "baseline \u00b7 7 single-model runs merged",
+ "captured_utc": "2026-10-10 04:55Z",
+ "date": "2026-10-10",
+ "space": "cagataydev/strands-decider-playground",
+ "space_sha": "e513d9ff5a1d9c5433ea78a869d766316c1bd902",
+ "hardware": "a100-large",
+ "hardware_detail": "NVIDIA A100-SXM4-80GB (a100-large, 80 GB), bf16",
+ "dtype": "bf16",
+ "models": [
+  "strands-decider-12B-gemma4-v1-2610",
+  "strands-decider-26B-A4B-gemma4-v1-2610",
+  "strands-decider-2B-hobson-v19",
+  "strands-decider-2B-hobson-v21",
+  "strands-decider-2B-qwen3.5-v1-2610",
+  "strands-decider-E2B-gemma4-v1-2610",
+  "strands-decider-E4B-gemma4-v1-2610"
+ ],
+ "n_tasks": 231,
+ "n_cells": 1617,
+ "total": 1617,
+ "wall_s": 322.0,
+ "wall_s_note": "sum of the Space-side wall time of every run (model load + 231 forwards + scoring); latency_ms per cell is the forward alone",
+ "run_ids": [
+  "20261010T044945Z-0941",
+  "20261010T045041Z-f41d",
+  "20261010T045204Z-96e4",
+  "20261010T045250Z-f7e8",
+  "20261010T045328Z-da2f",
+  "20261010T045414Z-600d",
+  "20261010T045504Z-426f"
+ ],
+ "order": "model-major (one run per model); see bench/capture.py",
+ "wall_s_observed_by_client": null,
+ "cancelled": false,
+ "error": null,
+ "dataset": "cagataydev/strands-decider-playground-bench",
+ "dataset_paths": [
+  "runs/20261010T044945Z-0941",
+  "runs/20261010T045041Z-f41d",
+  "runs/20261010T045204Z-96e4",
+  "runs/20261010T045250Z-f7e8",
+  "runs/20261010T045328Z-da2f",
+  "runs/20261010T045414Z-600d",
+  "runs/20261010T045504Z-426f"
+ ],
+ "versions": {
+  "jevbench": "git 1bcc55eb6c8c",
+  "strands-decider": "git 0ac22a97e584",
+  "torch": "2.14.1+cu130",
+  "transformers": "5.19.0",
+  "gradio": "6.30.0"
+ },
+ "per_model": {
+  "strands-decider-12B-gemma4-v1-2610": {
+   "n": 231,
+   "done": 231,
+   "correct": 200,
+   "brier": 0.1982,
+   "strict_valid": 231,
+   "valid": 231,
+   "p50_ms": 136.3,
+   "latency_ms_median": 136.3,
+   "latency_ms_p90": 633.1
+  },
+  "strands-decider-26B-A4B-gemma4-v1-2610": {
+   "n": 231,
+   "done": 231,
+   "correct": 199,
+   "brier": 0.1998,
+   "strict_valid": 231,
+   "valid": 231,
+   "p50_ms": 200.1,
+   "latency_ms_median": 200.3,
+   "latency_ms_p90": 406.8
+  },
+  "strands-decider-2B-hobson-v19": {
+   "n": 231,
+   "done": 231,
+   "correct": 166,
+   "brier": 0.3611,
+   "strict_valid": 231,
+   "valid": 231,
+   "p50_ms": 96.8,
+   "latency_ms_median": 97.0,
+   "latency_ms_p90": 281.1
+  },
+  "strands-decider-2B-hobson-v21": {
+   "n": 231,
+   "done": 231,
+   "correct": 171,
+   "brier": 0.3575,
+   "strict_valid": 231,
+   "valid": 231,
+   "p50_ms": 95.2,
+   "latency_ms_median": 95.6,
+   "latency_ms_p90": 280.3
+  },
+  "strands-decider-2B-qwen3.5-v1-2610": {
+   "n": 231,
+   "done": 231,
+   "correct": 177,
+   "brier": 0.3182,
+   "strict_valid": 231,
+   "valid": 231,
+   "p50_ms": 98.2,
+   "latency_ms_median": 98.4,
+   "latency_ms_p90": 282.3
+  },
+  "strands-decider-E2B-gemma4-v1-2610": {
+   "n": 231,
+   "done": 231,
+   "correct": 178,
+   "brier": 0.3395,
+   "strict_valid": 231,
+   "valid": 231,
+   "p50_ms": 101.1,
+   "latency_ms_median": 101.1,
+   "latency_ms_p90": 249.7
+  },
+  "strands-decider-E4B-gemma4-v1-2610": {
+   "n": 231,
+   "done": 231,
+   "correct": 185,
+   "brier": 0.2624,
+   "strict_valid": 231,
+   "valid": 231,
+   "p50_ms": 116.4,
+   "latency_ms_median": 116.4,
+   "latency_ms_p90": 306.8
+  }
+ },
+ "how": "python -m bench.capture run \u2014 every cell computed on the Space through answer(), scored with JevBench's score_task",
+ "space_sha_mirror_main": "4a81573"
+}
