@@ -1,0 +1,41 @@
+{
+  "checkpoint": "<redacted>/ckpt-s5-clean",
+  "checkpoint_files_sha256_16": "e884729b9d3ee211",
+  "jevbench_commit": "1bcc55eb6c8cffde2306b3db03ede39b61c6152a",
+  "tasks_sha256": "771ea8ac252af155606eeb09cad920b32b326c5c2b1e9c9af868be00fe8e2fad",
+  "n_tasks": 231,
+  "hobson_git_rev": "75c9fd32e664954cdc18481434018aa507eee8fb",
+  "hobson_src_dirty_files": "0",
+  "hobson_pkg": "<redacted>/strands_decider",
+  "hobson_pkg_py_sha256_16": "be14b16e9c97dd77",
+  "gpu_index": "0",
+  "gpu": "NVIDIA L40S, 580.126.09",
+  "port": 8099,
+  "server_load_s": 11,
+  "jevbench_run_s": 49,
+  "total_wall_s": 63,
+  "n_attempted": 231,
+  "n_failed": 0,
+  "n_correct": 176,
+  "accuracy": 0.7619047619047619,
+  "schema_validity_strict": 1.0,
+  "latency": {
+    "n": 231,
+    "p50_s": 0.06327063697972335,
+    "p95_s": 0.13073315299698152
+  },
+  "tiers": {
+    "easy": [
+      48,
+      48
+    ],
+    "standard": [
+      67,
+      72
+    ],
+    "hard": [
+      61,
+      111
+    ]
+  }
+}

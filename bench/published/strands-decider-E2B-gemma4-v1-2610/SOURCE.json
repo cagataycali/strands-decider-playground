@@ -1,0 +1,9 @@
+{
+ "repo": "StrandsAgents/strands-decider-E2B-gemma4-v1-2610",
+ "eval_dir": "eval/jevbench-w4096",
+ "sha": "d383ecf8534b13d49b3b567a1b66f88fca6d50ba",
+ "n_correct": 180,
+ "brier_mean": 0.3133020511688312,
+ "ece": 0.05316926406926404,
+ "p50_s": 0.10195041999986643
+}
