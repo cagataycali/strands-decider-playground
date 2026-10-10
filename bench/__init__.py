@@ -829,11 +829,13 @@ def errors_html(job: Job | None, labels: dict[str, str], include_published: bool
 # picker + static
 # ---------------------------------------------------------------------------------
 def picker_html() -> str:
-    data = json.dumps(picker_payload(), ensure_ascii=False).replace("</", "<\\/")
+    # HTML-escaped JSON in a hidden div (textContent unescapes it); a <script type=json> would be
+    # flagged/stripped by gr.HTML's sanitiser.
+    data = E(json.dumps(picker_payload(), ensure_ascii=False))
     tiers = "".join(f'<button type="button" class="sdb-f" data-tier="{t}">{t}</button>' for t in TIERS)
     fams = sorted({t.family for t in tasks().values()})
     fam_opts = "".join(f'<option value="{E(f)}">{E(f)}</option>' for f in fams)
-    return (f'<div class="sdp sdb-picker" id="sdb-picker"><script type="application/json" id="sdb-tasks">{data}</script>'
+    return (f'<div class="sdp sdb-picker" id="sdb-picker"><div id="sdb-tasks" hidden>{data}</div>'
             '<div class="sdb-prow"><input class="sdb-search" type="search" placeholder="search 231 JevBench tasks — id, question, state" aria-label="search tasks">'
             f'<div class="sdb-filters"><button type="button" class="sdb-f on" data-tier="">all</button>{tiers}</div>'
             f'<select class="sdb-fam" aria-label="category"><option value="">every category</option>{fam_opts}</select>'
