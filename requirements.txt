@@ -1,0 +1,30 @@
+# Pinned to the versions this app was actually MEASURED working on (lane APP, 2026-10-10).
+# The golden check in lanes/APP/GOLDEN.md reproduced every published digit on this exact set.
+
+# Only release 0.1.0 exists on PyPI (RESEARCH/DESIGN.md section 6). Pinned so a surprise
+# upload cannot move the golden numbers under us. [vision] adds Pillow for image input.
+# DEPLOY 01:5xZ: PyPI 0.1.0 is an OLDER release than the git main APP measured, and it
+# REJECTS the gemma configs: StrandsDeciderConfig.__init__() got an unexpected keyword
+# argument 'full_weight_targets' (E2B) / 'force_bos' (2B-gemma4) -> 0/6 gemma models loaded
+# on the live Space. Pinned to the EXACT commit the golden was measured on (public repo,
+# sha verified present on origin/main via anonymous git ls-remote).
+strands-decider[vision] @ git+https://github.com/strands-labs/strands-decider@0ac22a97e584f3ccf87cc9b8cc5fdbad57cdf534
+
+# Resolved as dependencies of the above, pinned to what ran:
+torch==2.14.1
+transformers==5.19.0          # vision input needs >= 5.18
+peft==0.21.2
+accelerate==1.15.0
+safetensors==0.8.0
+tokenizers==0.23.3
+huggingface_hub==2.2.0
+pillow==12.3.0
+
+# App:
+gradio==6.30.0
+pandas==2.3.3                 # probability tables / BarPlot frames
+psutil==7.2.2                 # metrics.py: RSS peak sampling on cpu/mps
+
+# ZeroGPU. RESEARCH measured PyPI 0.51.3 and recommends ZeroGPU xlarge (96 GB, free) over
+# the paid A100-large. DEPLOY owns whether the Space runs on ZeroGPU; uncomment there.
+# spaces==0.51.3
