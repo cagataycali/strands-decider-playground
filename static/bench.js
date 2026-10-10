@@ -1,4 +1,4 @@
-// bench.js -- LANE BENCH. Client side of the JevBench section: (1) the task picker (search / tier /
+// bench.js -- client side of the JevBench section: (1) the task picker (search / tier /
 // category filter over the JSON the server embedded; a click writes "<task-id>#<nonce>" into the hidden
 // Gradio textbox #sdb-pick, same mechanism EXAMPLES measured to work on Gradio 6.30), (2) board tooltips
 // + column click -> #sdb-detail textbox, (3) marks newly filled cells so they animate in on a live run.
