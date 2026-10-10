@@ -994,10 +994,12 @@ def build_ui() -> gr.Blocks:
                 return gr.update(), f'<div class="sdp sdb-est">{E(j)}</div>'
             return bench.board_html(j, _BENCH_LABELS), bench_estimate_html(names, scope_v, model_v, started=True)
 
-        bench_run.click(_bench_start, [bench_scope, bench_model], [bench_board, bench_est])
-        bench_cancel.click(lambda: (bench.cancel_live(), bench.board_html(bench.latest(), _BENCH_LABELS))[1], None, bench_board)
-        bench_scope.change(lambda sc, mo: bench_estimate_html(names, sc, mo), [bench_scope, bench_model], bench_est)
-        bench_model.change(lambda sc, mo: bench_estimate_html(names, sc, mo), [bench_scope, bench_model], bench_est)
+        # Bench handlers are pure-Python renders (the model calls happen in the Job thread, which takes the runner lock itself),
+        # so they get their own queue lane: a board poll or a column click must never wait behind a 7-model Decide.
+        bench_run.click(_bench_start, [bench_scope, bench_model], [bench_board, bench_est], concurrency_id="bench-ui", concurrency_limit=8)
+        bench_cancel.click(lambda: (bench.cancel_live(), bench.board_html(bench.latest(), _BENCH_LABELS))[1], None, bench_board, concurrency_id="bench-ui", concurrency_limit=8)
+        bench_scope.change(lambda sc, mo: bench_estimate_html(names, sc, mo), [bench_scope, bench_model], bench_est, concurrency_id="bench-ui", concurrency_limit=8)
+        bench_model.change(lambda sc, mo: bench_estimate_html(names, sc, mo), [bench_scope, bench_model], bench_est, concurrency_id="bench-ui", concurrency_limit=8)
 
         def _bench_tick(sig, hist):
             j = bench.latest()
@@ -1007,14 +1009,14 @@ def build_ui() -> gr.Blocks:
             errs = gr.update() if (j and j.running() and j.done % 7) else bench.errors_html(j, _BENCH_LABELS)
             return bench.board_html(j, _BENCH_LABELS, show_history=bool(hist)), errs, new
 
-        bench_timer.tick(_bench_tick, [bench_sig, bench_hist], [bench_board, bench_errors, bench_sig])
-        bench_hist.change(lambda h: bench.board_html(bench.latest(), _BENCH_LABELS, show_history=bool(h)), [bench_hist], bench_board)
+        bench_timer.tick(_bench_tick, [bench_sig, bench_hist], [bench_board, bench_errors, bench_sig], concurrency_id="bench-ui", concurrency_limit=8)
+        bench_hist.change(lambda h: bench.board_html(bench.latest(), _BENCH_LABELS, show_history=bool(h)), [bench_hist], bench_board, concurrency_id="bench-ui", concurrency_limit=8)
 
         def _bench_detail(raw_id: str):
             tid = (raw_id or "").split("#", 1)[0].strip()
             return bench.task_detail_html(tid, bench.latest(), _BENCH_LABELS) or gr.update()
 
-        bench_detail_pick.input(_bench_detail, [bench_detail_pick], [bench_detail])
+        bench_detail_pick.input(_bench_detail, [bench_detail_pick], [bench_detail], concurrency_id="bench-ui", concurrency_limit=8)
 
         def _bench_sched(on, at):
             try:
@@ -1026,7 +1028,7 @@ def build_ui() -> gr.Blocks:
                     f'persisted: {E(st.get("persisted", "no HF_TOKEN"))} · honest note: a thread timer fires only while this process is up — '
                     f'a sleeping Space will not fire it (this a100 Space does not sleep unless configured to)</div>')
 
-        bench_sched_on.change(_bench_sched, [bench_sched_on, bench_sched_at], bench_est)
+        bench_sched_on.change(_bench_sched, [bench_sched_on, bench_sched_at], bench_est, concurrency_id="bench-ui", concurrency_limit=8)
         # --- /LANE BENCH ---
 
     return demo

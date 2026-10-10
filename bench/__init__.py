@@ -34,7 +34,7 @@ TIER_OF_FILE = {"original": "standard", "easy": "easy", "hard": "hard"}
 
 _TASKS: dict | None = None
 _ORDER: list[str] | None = None
-_LOCK = threading.Lock()
+_LOCK = threading.RLock()  # re-entrant: start_run holds it while task_ids() -> tasks() takes it again (a plain Lock deadlocked the Run button)
 
 
 def E(s: Any) -> str:
