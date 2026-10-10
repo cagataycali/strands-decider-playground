@@ -1,0 +1,8 @@
+bench/runs/
+__pycache__/
+*.pyc
+.venv/
+runs/
+.DS_Store
+*.egg-info/
+.gradio/

@@ -20,6 +20,7 @@ from __future__ import annotations
 import base64
 import html
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -172,14 +173,17 @@ def _card(ex: dict) -> str:
         for i, q in enumerate(qs):
             qmap[f'{q["type"]}_{sum(1 for p in qs[:i] if p["type"] == q["type"])}'] = q
         ans = "".join(_answer_html(qid, a, qmap.get(qid)) for qid, a in m["answers"].items())
-        meta = []
+        # Caption: model + date + token count. Latency and device are left out on purpose: they
+        # describe the machine the recording ran on, not the example.
+        parts = ["measured", str(m.get("model") or "").replace("strands-decider-", "") or "decider"]
+        day = re.search(r"\d{4}-\d{2}-\d{2}", str(m.get("label", "")))
+        if day:
+            parts.append(day.group(0))
         if m.get("input_tokens") is not None:
-            meta.append(f'{m["input_tokens"]} input tokens')
-        if m.get("latency_ms") is not None:
-            meta.append(f'{float(m["latency_ms"]):.0f} ms{" (cold)" if m.get("cold") else ""}')
-        lab = str(m.get("label", "measured")).replace(", ", " · ").replace("strands-decider-", "")
-        measured = (f'<div class="sdx-measured"><div class="cap" title="{E(m.get("label", ""))}">{E(lab)}'
-                    + (f' · {" · ".join(meta)}' if meta else "") + f'</div>{ans}</div>')
+            parts.append(f'{m["input_tokens"]} input tokens')
+        title = f'recorded through app.answer() on {m.get("model", "")}'
+        measured = (f'<div class="sdx-measured"><div class="cap" title="{E(title)}">{E(" · ".join(parts))}'
+                    f'</div>{ans}</div>')
     elif m.get("error"):
         measured = f'<div class="sdx-measured err"><div class="cap">not measured</div><div class="line">{E(m["error"])}</div></div>'
     else:

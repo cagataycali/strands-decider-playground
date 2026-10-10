@@ -282,7 +282,7 @@ def howto_html() -> str:
         + _term(SERVE_CMD, "serve")
         + _term(CURL_CMD, "POST /v1/systemone")
         + f'<p class="ld-step__cite">Commands and outputs from the <a href="{REPO_URL}#getting-started" target="_blank" rel="noopener">README</a>, '
-        f'<code>--device cpu</code>; other devices differ in the last digits.</p></article>'
+        f'recorded there on a cpu; other devices differ in the last digits.</p></article>'
         # (3) in an agent
         '<article class="ld-step"><div class="ld-step__n mono">3</div><h3>Use it in an agent</h3>'
         '<p>A <code>before_tool_call</code> hook gates a weather-tool call on two yes/no decisions, so the agent asks which '
@@ -367,8 +367,8 @@ def footer_html() -> str:
         f'<div class="ld-footer__columns">{col_html}</div></div>'
         f'<div class="ld-footmark" aria-hidden="true">{WORDMARK}</div>'
         f'<div class="ld-footer__legal"><span class="ld-footer__brand">{MARK}<span class="ld-wordmark-wrap">{WORDMARK}</span><span class="proj mono">/decider</span></span>'
-        f'<a href="{REPO_URL}/blob/main/LICENSE" target="_blank" rel="noopener">Apache-2.0</a>'
-        '<span class="muted">models: StrandsAgents on Hugging Face · page: strands design system</span></div>'
+        f'<span class="muted">this page: MIT · <a href="{REPO_URL}/blob/main/LICENSE" target="_blank" rel="noopener">strands-decider: Apache-2.0</a> · '
+        'models: StrandsAgents on Hugging Face · design: strands</span></div>'
         '</section></div>'
     )
 
