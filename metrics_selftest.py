@@ -1,21 +1,19 @@
 #!/usr/bin/env python
-"""metrics_selftest.py -- proves metrics.py measures something real, on every backend.
-
-OWNED BY LANE METRICS.
+"""Self-test for metrics.py: proves it measures something real, on every backend.
 
     python metrics_selftest.py                 # mps (or cuda) AND cpu, synthetic module
     python metrics_selftest.py --device cpu    # one backend only
     python metrics_selftest.py --repo StrandsAgents/strands-decider-2B-qwen3.5-v1-2610
                                                # same assertions against a REAL decider load
 
-Asserts (LAW 4 -- these are the claims, and they are checked, not asserted in prose):
+Asserts (these are the claims, and they are checked, not asserted in prose):
   A1  activation_bytes  > 0                       (a forward really allocates)
   A2  peak_bytes       >= baseline_bytes          (peak is not below the post-load floor)
   A3  input_tokens      > 0  and is an int        (tokenised, not estimated)
   A4  the SAME KEYS come back on every backend    (the app's table can never have holes)
   A5  latency_ms        > 0
   A6  weight_bytes      > 0                       (the load was actually measured)
-  A7  reproducible: two runs agree on tokens, and activation within 25%  (LAW 4)
+  A7  reproducible: two runs agree on tokens, and activation within 25%
   A8  per_layer=True yields rows; per_layer=False yields an UNAVAILABLE string
   A9  est_flops == 2 * active_params * input_tokens
 """
@@ -180,7 +178,7 @@ def main() -> int:
         assert_core(m, f"synthetic/{dev}")
         results[dev] = m
 
-        # A7 reproducibility -- a number we cannot get twice is not a metric (LAW 4)
+        # A7 reproducibility -- a number we cannot get twice is not a metric
         m2 = run_synthetic(dev)
         same_tok = m2["input_tokens"] == m["input_tokens"]
         a1, a2 = m["activation_bytes"], m2["activation_bytes"]

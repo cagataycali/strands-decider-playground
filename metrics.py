@@ -1,6 +1,7 @@
-"""metrics.py -- per-model, per-request compute measurement for the decider playground.
+"""Per-request compute measurement: memory, latency, tokens, and clearly-labelled estimates.
 
-OWNED BY LANE METRICS. Lane APP imports it and must not edit it.
+`runner.py` wraps every model load in `baseline_after_load.around()` and every forward in
+`measure()`; the dict that comes back is what the compute block on each card shows.
 
 Design rules this file obeys:
   * Every backend (cuda | mps | cpu) returns THE SAME KEYS, so the app's table never has holes.
@@ -8,9 +9,9 @@ Design rules this file obeys:
     never a silently-wrong zero.
   * The headline number is ACTIVATION memory = peak-during-forward minus post-load baseline.
   * Nothing here is estimated unless its key says `est_`; `$/h` and `active_params` are INPUTS
-    (they come from RESEARCH/DESIGN.md), not constants invented in this file.
+    passed by the caller, not constants invented in this file.
 
-Public API (published in COORDINATION.md at 01:14Z, stable):
+Public API:
 
     baseline_after_load(repo=None, *, device=None, model=None, load_s=None,
                         weight_bytes=None, dtype=None) -> dict
@@ -55,7 +56,7 @@ __all__ = [
 
 # Poll interval for the sampling peak-tracker (MPS and CPU have no native peak counter).
 # 0 = yielding spin (time.sleep(0)), which is the only way to get real resolution on macOS:
-# MEASURED on this Mac -- time.sleep(tiny) has ~1.7 ms granularity so a 12 ms forward got
+# MEASURED on an Apple-silicon machine: time.sleep(tiny) has ~1.7 ms granularity so a 12 ms forward got
 # 1-2 samples, while sleep(0) gives ~16,500 reads/ms AND leaves the forward's own time
 # unchanged (12.00 ms). A sampler that never yields at all is NOT the answer: it starved
 # the main thread and the same forward took 444 ms.
@@ -113,6 +114,7 @@ _MB = 1024.0 * 1024.0
 
 
 def _mb(v: Any) -> Any:
+    """Bytes -> MiB to 3 places; non-numbers (UNAVAILABLE strings) pass through."""
     return round(v / _MB, 3) if isinstance(v, (int, float)) else v
 
 
@@ -249,6 +251,7 @@ class _Cpu(_Backend):
 
 
 def _backend(device: Any) -> _Backend:
+    """The backend object for a device label."""
     label = device_label(device)
     if label == "cuda":
         return _Cuda()
@@ -282,7 +285,7 @@ class _Sampler:
     says so, so nobody reads it as an exact allocator high-water mark.
     """
 
-    #: MEASURED on this Mac with a real 2B decider on CPU: a yielding spin costs the
+    #: MEASURED with a real 2B decider on CPU: a yielding spin costs the
     #: forward +2.1 to +4.2 s on a ~11.4 s CPU inference (18-30%), because on CPU the
     #: sampler competes with torch's own 10 compute threads. On MPS the same spin is free
     #: (12.00 ms with and without). So the sampler SPINS only where the main thread is
@@ -679,8 +682,8 @@ def measure(
 
     device        : "cuda" | "mps" | "cpu" (or anything device_label understands)
     baseline      : the dict from baseline_after_load(); supplies weight/baseline/load_s
-    active_params : ACTIVE parameter count (MoE: active, not total) -- from RESEARCH
-    usd_per_hour  : hardware price -- from RESEARCH/DESIGN.md, never invented here
+    active_params : ACTIVE parameter count (MoE: active, not total), supplied by the caller
+    usd_per_hour  : hardware price, supplied by the caller -- never invented here
     model         : the nn.Module, so input tokens and per-layer bytes can be hooked
     per_layer     : forward hooks per leaf module. Slow. Default off.
     """
@@ -848,7 +851,7 @@ def measure(
 
     # ---- estimates (and they say so) ------------------------------------------------
     out["active_params"] = active_params if active_params is not None else UNAVAILABLE(
-        "not measured: pass active_params= from RESEARCH (MoE: ACTIVE, not total)"
+        "not measured: pass active_params= (MoE: ACTIVE, not total)"
     )
     basis = out["compute_positions"] if isinstance(out["compute_positions"], int) else out["input_tokens"]
     if isinstance(active_params, (int, float)) and isinstance(basis, int):
@@ -867,7 +870,7 @@ def measure(
         out["est_flops_basis"] = UNAVAILABLE(why)
 
     out["usd_per_hour"] = usd_per_hour if usd_per_hour is not None else UNAVAILABLE(
-        "not measured: pass usd_per_hour= from RESEARCH/DESIGN.md"
+        "not measured: pass usd_per_hour="
     )
     if isinstance(usd_per_hour, (int, float)) and isinstance(out["latency_ms"], (int, float)):
         out["est_usd"] = out["latency_ms"] / 1000.0 / 3600.0 * float(usd_per_hour)

@@ -1,5 +1,5 @@
 {
-  "_about": "LANE EXAMPLES. One example per ability of the strands decider (source: README.md + docs/vision.md, copies in lanes/EXAMPLES/upstream/). `measured` blocks are written ONLY by lanes/EXAMPLES/precompute.py through app.answer() -- never typed by hand.",
+  "_about": "One example per ability of the strands decider (sources: the strands-decider README and docs/vision.md). `measured` blocks were recorded through app.answer() on the stated model and date -- never typed by hand.",
   "families": [
     {
       "id": "pick",

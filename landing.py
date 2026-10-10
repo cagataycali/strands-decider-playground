@@ -1,14 +1,13 @@
-"""landing.py -- LANE LANDING owns this module.
+"""The landing sections: hero, proof row, how-to-use, model row, footer.
 
-Hero / proof row / how-to-use CTA / model row / footer for the Strands Decider Playground,
-in the strandsagents.com / strands-robots voice. Pure HTML strings: `app.py` drops them into
-gr.HTML inside its `# --- LANE LANDING ---` region. Nothing here recomputes a model answer.
+Pure HTML strings in the strandsagents.com voice; `app.py` drops them into gr.HTML above and
+below the ask bar. Nothing here recomputes a model answer.
 
-Every number on the page is either read from the registry at build time (model count,
-base model, LoRA rank, vision) or CITED to the strands-decider README / evaluation/results.md
-with a link next to it. A model the README table does not know gets "no README figure".
+Every number on the page is either read from the registry at build time (model count, base
+model, LoRA rank, vision) or CITED to the strands-decider README / evaluation/results.md with
+a link next to it. A model the README table does not know gets "no README figure".
 
-Standalone preview:  python -m space.landing --demo > lanes/LANDING/demo.html
+Standalone preview:  python landing.py --demo [--dark] > demo.html
 """
 from __future__ import annotations
 
@@ -69,14 +68,17 @@ JEVBENCH_N = 231
 
 
 def E(s: Any) -> str:
+    """HTML-escape anything (None -> empty string)."""
     return _html.escape("" if s is None else str(s), quote=True)
 
 
 def _static(name: str) -> str:
+    """Text of a file under static/."""
     return (STATIC / name).read_text(encoding="utf-8")
 
 
 def _svg(name: str, cls: str, extra: str = "") -> str:
+    """Inline an SVG from static/ with a class and aria-hidden."""
     raw = re.sub(r"<!--.*?-->", "", _static(name), flags=re.S).strip()
     return re.sub(r"<svg\b", f'<svg class="{cls}" aria-hidden="true" {extra}', raw, count=1)
 
@@ -88,14 +90,14 @@ WORDMARK = _svg("img/wordmark.svg", "ld-wordmark")
 
 
 # ---------------------------------------------------------------------------------
-# registry helpers (duplicated on purpose: landing.py must not import app.py)
+# registry helpers (small duplicates of app.py's, on purpose: this module must not import app.py)
 # ---------------------------------------------------------------------------------
 
 _LORA_R: dict[str, Any] = {}
 
 
 def lora_r(info: Any) -> Any:
-    """`lora_r` from the decider config (local HF cache hit after registry read it)."""
+    """LoRA rank from the decider config (a local Hub-cache hit after the registry read it)."""
     repo = getattr(info, "repo", None)
     if repo in _LORA_R:
         return _LORA_R[repo]
@@ -113,10 +115,12 @@ def lora_r(info: Any) -> Any:
 
 
 def base_short(info: Any) -> str:
+    """Base model name without the org prefix."""
     return ((getattr(info, "base_model", "") or "").split("/")[-1]) or "unknown base"
 
 
 def model_label(info: Any) -> str:
+    """Card label: base + LoRA rank."""
     r = lora_r(info)
     return base_short(info) + (f" · LoRA r {r}" if r else "")
 
@@ -126,6 +130,7 @@ def model_label(info: Any) -> str:
 # ---------------------------------------------------------------------------------
 
 def _copy_btn(text: str, cls: str = "sr-copy") -> str:
+    """A copy-to-clipboard button; static/landing.js handles the click."""
     return f'<button type="button" class="{cls}" data-ld-copy="{E(text)}" aria-label="copy to clipboard">copy</button>'
 
 
@@ -197,6 +202,7 @@ def figure_svg() -> str:
 
 
 def hero_html(n_models: int) -> str:
+    """Title, lead, the two CTAs, the install line, and the architecture figure."""
     return (
         '<div class="ld" id="ld-hero">'
         '<section class="ld-hero">'
@@ -225,6 +231,7 @@ def hero_html(n_models: int) -> str:
 # ---------------------------------------------------------------------------------
 
 def proof_html(n_models: int) -> str:
+    """Three counted facts: public models, question types, the cited 95% calibration figure."""
     return (
         '<div class="ld"><section class="sr-proof ld-proof">'
         f'<div><strong data-ld-count="{n_models}">{n_models}</strong><span>public models, read from the org when this page was built</span></div>'
@@ -241,6 +248,7 @@ def proof_html(n_models: int) -> str:
 # ---------------------------------------------------------------------------------
 
 def _term(cmd: str, title: str = "", out: str | None = None) -> str:
+    """A terminal block with a copy button and an optional output pane."""
     head = f'<div class="ld-term__head"><span class="dots"><i></i><i></i><i></i></span><span class="t">{E(title)}</span>{_copy_btn(cmd)}</div>'
     body = f'<pre class="ld-term__body"><code>{E(cmd)}</code></pre>'
     if out:
@@ -249,6 +257,7 @@ def _term(cmd: str, title: str = "", out: str | None = None) -> str:
 
 
 def howto_html() -> str:
+    """Three ways in: ask here, install (PyPI or main) with the README commands, use it in an agent."""
     return (
         '<div class="ld" id="ld-howto"><section class="ld-howto">'
         '<header class="ld-sec"><h2>How to use it now</h2><span class="sub">three ways in, shortest first</span></header>'
@@ -288,6 +297,7 @@ def howto_html() -> str:
 # ---------------------------------------------------------------------------------
 
 def _eval_badges(info: Any) -> str:
+    """JevBench + Brier badges from the README table, linking to its anchor."""
     name = getattr(info, "name", "") or getattr(info, "repo", "").split("/")[-1]
     ev = README_EVALS.get(name)
     if not ev:
@@ -300,6 +310,7 @@ def _eval_badges(info: Any) -> str:
 
 
 def models_html(registry: list[Any]) -> str:
+    """One card per listed model: label, Hub link, README badges, vision tag."""
     cards = []
     for info in registry:
         repo = getattr(info, "repo", "")
@@ -330,6 +341,7 @@ def models_html(registry: list[Any]) -> str:
 # ---------------------------------------------------------------------------------
 
 def footer_html() -> str:
+    """CTA panel, install line, link columns, wordmark and the legal line."""
     cols = [
         ("Use", [("Install", f"{REPO_URL}#getting-started"), ("Serve", f"{REPO_URL}#running-as-a-server"),
                  ("Images", f"{REPO_URL}#images"), ("In an agent", AGENT_EXAMPLE_URL)]),
@@ -366,6 +378,7 @@ def footer_html() -> str:
 # ---------------------------------------------------------------------------------
 
 def _tokens_css_inlined() -> str:
+    """tokens.css with the woff2 fonts inlined as data URIs (for the standalone preview)."""
     css = _static("tokens.css")
     for f in sorted((STATIC / "fonts").glob("*.woff2")):
         b64 = base64.b64encode(f.read_bytes()).decode("ascii")
@@ -374,13 +387,15 @@ def _tokens_css_inlined() -> str:
 
 
 class _Demo:
+    """Minimal stand-in for registry.ModelInfo in the standalone preview."""
+
     def __init__(self, name: str, base: str, vision: bool, r: Any):
         self.repo, self.name, self.base_model, self.vision, self.config_file = f"StrandsAgents/{name}", name, base, vision, None
         _LORA_R[self.repo] = r
 
 
 def _demo_registry() -> list[Any]:
-    """Live registry when the Hub answers; the 7 public repos with their measured bases otherwise."""
+    """Live registry when the Hub answers; otherwise the 7 public repos as of writing (preview only)."""
     try:
         sys.path.insert(0, str(Path(__file__).parent))
         import registry  # noqa: PLC0415
@@ -401,12 +416,13 @@ def _demo_registry() -> list[Any]:
 
 
 def demo_page(dark: bool = False) -> str:
+    """Standalone HTML of every landing section with placeholders for the ask bar and gallery."""
     reg = _demo_registry()
     n = len(reg)
     body = ('<div class="gradio-container">' + hero_html(n) + proof_html(n)
             + '<div id="sdp-ask" class="ld-demo-ask"><label>State — what is being decided about'
               '<textarea rows="3" placeholder="the ask bar of the running app sits here"></textarea></label></div>'
-              '<div id="sdx-gallery-host" class="ld-demo-ask"><em>examples region (LANE EXAMPLES)</em></div>'
+              '<div id="sdx-gallery-host" class="ld-demo-ask"><em>the example gallery of the running app sits here</em></div>'
             + howto_html() + models_html(reg) + footer_html() + '</div>')
     return (f'<!doctype html><html class="{"dark" if dark else ""}" lang="en"><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width, initial-scale=1">'

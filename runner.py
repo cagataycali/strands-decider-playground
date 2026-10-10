@@ -1,26 +1,26 @@
-"""runner.py -- loads deciders, answers questions, measures the cost.
+"""Load a decider, answer the questions, measure the cost -- one call per model.
 
-OWNED BY LANE APP. Imports `metrics.py` (owned by LANE METRICS) and never edits it.
+`run_one()` is the unit of work the app streams: it takes a `ModelInfo`, the state text, the
+built questions and an optional image, and returns one card dict (answers, metrics, load
+report, or an error). `build_questions()` turns the UI's question specs into the library's
+typed questions; `normalise_answer()` gives every answer type one shape; `comparison()`
+builds the cross-model table and agreement row.
 
-Two hard constraints from the BRIEF, both enforced here:
+Two rules, both enforced here:
 
-  * MPS CRASHES ON CONCURRENT REQUESTS (Metal command encoder). Every model call --
-    load AND forward -- goes through the single module-level `_LOCK`. Gradio serves
-    requests on a thread pool, so without this the second user crashes the Space.
+  * Every model call -- load AND forward -- goes through one module-level lock. Gradio serves
+    requests on a thread pool; overlapping model calls are unsafe on MPS and would make the
+    memory and latency numbers unattributable on any device.
 
-  * 26B-A4B bf16 CANNOT CO-RESIDE with the others -- RESEARCH measured that it cannot be
-    resident on 48 GB AT ALL (48.067 GiB of weights vs 48 GiB of raw VRAM). So admission and
-    eviction are BASE-KEYED and live in cache.py (DESIGN section 4); load time is reported in
-    its own field, never added to the forward latency, so a cold card does not look slow.
+  * Load time is reported in its own field and never added to the forward latency, so a cold
+    card does not look slow. Admission and eviction are per base model and live in cache.py.
 """
 
 from __future__ import annotations
 
 import base64
-import gc
 import io
 import os
-import threading
 import time
 from typing import Any
 
@@ -30,8 +30,8 @@ import metrics as M
 from registry import ModelInfo
 
 # ---- the one lock -----------------------------------------------------------------
-# DESIGN 4e: held for the whole load+forward. Coarse on purpose -- a per-model lock would
-# still let two different models drive two Metal encoders at once, which is the crash.
+# Held for the whole load+forward. Coarse on purpose: a per-model lock would still let two
+# different models run at once.
 from cache import INFER_LOCK as _LOCK
 from cache import ModelCache, ModelTooLargeError
 
@@ -39,7 +39,7 @@ _CACHE_OBJ: ModelCache | None = None
 
 
 def cache() -> ModelCache:
-    """The one process-wide base-keyed LRU (DESIGN section 4)."""
+    """The one process-wide model cache, created on first use for the default device."""
     global _CACHE_OBJ
     if _CACHE_OBJ is None:
         _CACHE_OBJ = ModelCache(device=default_device())
@@ -47,6 +47,7 @@ def cache() -> ModelCache:
 
 
 def default_device() -> str:
+    """DECIDER_DEVICE if set, else cuda > mps > cpu."""
     if os.environ.get("DECIDER_DEVICE"):
         return os.environ["DECIDER_DEVICE"]
     if torch.cuda.is_available():
@@ -56,11 +57,8 @@ def default_device() -> str:
     return "cpu"
 
 
-def cache_state() -> list[str]:
-    return cache().resident()
-
-
 def evict_all() -> None:
+    """Unload every model (the "Unload models" button)."""
     with _LOCK:
         cache().clear()
 
@@ -71,7 +69,7 @@ def evict_all() -> None:
 def build_questions(specs: list[dict]) -> dict[str, Any]:
     """specs: [{id?, type, instructions, options}] -> the SystemOneRequest questions dict.
 
-    The real schema field is `criteria`, NOT `options` (schema.py; COORDINATION 01:18Z):
+    The library's field is `criteria`, not `options` (strands_decider.schema):
       noul   -> criteria optional {"true"|"false": desc}
       choice -> criteria {name: desc}  (>=2)
       score  -> criteria [level, ...]  (2..10, ascending)
@@ -132,8 +130,8 @@ def normalise_answer(ans: dict) -> dict:
     """One shape for the table/chart regardless of question type.
 
     `value` is the headline, `probs` is {label: p} for the bar chart, `confidence` may be
-    None -- a noul answer HAS no confidence field by design (schema.py: with two outcomes
-    the probability IS the uncertainty), so we must not invent one.
+    None -- a noul answer HAS no confidence field by design (with two outcomes the
+    probability IS the uncertainty), so none is invented.
     """
     t = ans.get("type")
     if t == "noul":

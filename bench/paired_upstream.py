@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Paired per-task comparison of two JevBench runs, with an exact McNemar test.
 
+Copied verbatim from strands-decider `evaluation/jevbench/paired.py` (Apache-2.0) so the
+playground scores the way the model repo does; the CLI defaults below are that repo's paths.
+The playground imports `mcnemar_exact` from here.
+
 Each side is either a JevBench `results.jsonl` (one record per task, `task_id` and
 `correct`) or the repo's `research/data/jevbench_results.csv` (columns run, task_id,
 correct) together with a run name, e.g. `--a-run v17`.
