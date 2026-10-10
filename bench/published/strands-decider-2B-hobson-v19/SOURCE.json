@@ -1,0 +1,9 @@
+{
+ "repo": "StrandsAgents/strands-decider-2B-hobson-v19",
+ "eval_dir": "eval/jevbench-w4096",
+ "sha": "bb282d786bc251fd4e3068de3ada9ddbb38127cd",
+ "n_correct": 167,
+ "brier_mean": 0.34774792515151515,
+ "ece": 0.050081818181818206,
+ "p50_s": 0.08261553500051377
+}
