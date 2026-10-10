@@ -422,3 +422,5 @@ body, .gradio-container, gradio-app {
 .gradio-container [data-testid="status-tracker"], .gradio-container .wrap.generating, .gradio-container .wrap.pending { background: transparent !important; border: 0 !important; }
 .gradio-container .accordion button, .gradio-container button.label-wrap, .gradio-container .label-wrap button { background: transparent !important; border: 0 !important; border-radius: 0 !important; padding-left: 0 !important; }
 .gradio-container label.container > span, .gradio-container .block > label > span { font-family: var(--sr-mono) !important; font-size: var(--fs-caption) !important; letter-spacing: var(--tracking-caption); text-transform: uppercase; color: var(--muted) !important; }
+/* on a band the muted step is one shade too light in paper (4.27:1 on --band); step it up to text-light (>= 5.3:1) */
+.sdp-band .sdp-section .sub, .sdp-band .sdp-status, .sdp-band .sdb-legend, .sdp-band .sdb-dim, .sdp-band .sdp-kick .why, .sdp-band .sdp-grid.idle .state { color: var(--text-light); }
