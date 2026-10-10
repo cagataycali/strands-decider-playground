@@ -28,3 +28,7 @@ psutil==7.2.2                 # metrics.py: RSS peak sampling on cpu/mps
 # ZeroGPU. RESEARCH measured PyPI 0.51.3 and recommends ZeroGPU xlarge (96 GB, free) over
 # the paid A100-large. DEPLOY owns whether the Space runs on ZeroGPU; uncomment there.
 # spaces==0.51.3
+
+# Bench: JevBench scoring is delegated to the pinned upstream checkout (same commit as bench/tasks/PIN.json;
+# public repo, no dependencies). Without this line `import bench` fails on the Space (INTEGRATE 04:3xZ).
+jevbench @ git+https://github.com/fstandhartinger/jevbench@1bcc55eb6c8cffde2306b3db03ede39b61c6152a
