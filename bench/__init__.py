@@ -652,7 +652,8 @@ def _status_html(job: Job | None) -> str:
     pct = 100.0 * job.done / max(1, job.total)
     if job.running():
         eta = job.eta_s()
-        eta_s = f" · about {_fmt_s(eta)} left" if eta else " · measuring latency…"
+        eta_s = (" · all cells done, pushing to the dataset…" if job.done >= job.total
+                 else (f" · about {_fmt_s(eta)} left" if eta else " · measuring latency…"))
         cur = f" · now {job.current[1]} on {job.current[0]}" if job.current else ""
         txt = f'<span class="sdb-live">live</span> {job.label}: {job.done}/{job.total} cells · {_fmt_s(job.elapsed())} elapsed{eta_s}{cur}'
     else:
@@ -707,7 +708,7 @@ def task_detail_html(tid: str, job: Job | None, labels: dict[str, str]) -> str:
         trs.append(f'<tr class="sdb-{cls}"><td>{E(r["label"])} <span class="sdb-dim">{E("· published" if r["kind"] == "published" else "")}</span></td>'
                    f'<td><b>{E(x.get("predicted") if x.get("predicted") is not None else (x.get("error") or "—"))}</b></td>'
                    f'<td>{float(x.get("p_gold") or 0):.3f}</td><td class="sdb-dim">{ptxt}</td>'
-                   f'<td>{x.get("latency_ms") if x.get("latency_ms") is not None else "—"}</td></tr>')
+                   f'<td>{round(x["latency_ms"]) if x.get("latency_ms") is not None else "—"}</td></tr>')
     table = ('<table class="sdb-table"><thead><tr><th>model</th><th>answered</th><th>p(gold)</th><th>distribution</th><th>ms</th></tr></thead>'
              f'<tbody>{"".join(trs)}</tbody></table></div>')
     return head + table
