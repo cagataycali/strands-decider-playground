@@ -754,7 +754,7 @@ def build_ui() -> gr.Blocks:
                 unload = gr.Button("Unload models", scale=1)
 
         # --- LANE EXAMPLES ---
-        gr.HTML(EX.gallery_html(), elem_classes=["sdp-plain"], elem_id="sdx-gallery-host")
+        gr.HTML(EX.gallery_html(), elem_classes=["sdp-plain"], elem_id="sdp-examples")  # LANDING's "See the examples" target
         ex_pick = gr.Textbox(value="", visible=True, elem_id="sdx-pick", container=False, show_label=False,
                              elem_classes=["sdx-hidden"])  # 1x1 px via CSS; JS writes "<example-id>#<nonce>" here
 

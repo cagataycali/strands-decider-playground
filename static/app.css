@@ -69,7 +69,7 @@ body, .gradio-container, gradio-app {
 .gradio-container .options .item { color: var(--text) !important; }
 .gradio-container .options .item:hover, .gradio-container .options .item.selected { background: var(--accent-soft) !important; color: var(--text) !important; }
 .gradio-container .accordion button, .gradio-container .label-wrap { background: transparent !important; border: 0 !important; color: var(--text) !important; }
-.gradio-container > footer, .gradio-container .built-with, .gradio-container .show-api { display: none !important; } /* INTEGRATE: Gradio's own footer only; `footer` alone hid #sdp-footer (data-public-count) */
+.gradio-container > footer, .gradio-container .wrap > footer:not(.sdp-footer), .gradio-container footer.svelte-zxu34v, .gradio-container .built-with, .gradio-container .show-api { display: none !important; } /* INTEGRATE: Gradio's own footer only; `footer` alone hid #sdp-footer (data-public-count) */
 .gradio-container .progress-text, .gradio-container .meta-text, .gradio-container .meta-text-center { color: var(--muted) !important; }
 .gradio-container .progress-bar { background: var(--accent) !important; }
 .gradio-container .eta-bar { background: var(--accent-soft) !important; }
