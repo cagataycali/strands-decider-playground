@@ -1,0 +1,718 @@
+{
+  "_about": "One example per ability of the strands decider (sources: the strands-decider README and docs/vision.md). `measured` blocks were recorded through app.answer() on the stated model and date -- never typed by hand.",
+  "families": [
+    {
+      "id": "pick",
+      "label": "Pick",
+      "blurb": "choice: one of N options, with probabilities"
+    },
+    {
+      "id": "rate",
+      "label": "Rate",
+      "blurb": "score: an ordered rubric, read as an expected value"
+    },
+    {
+      "id": "yesno",
+      "label": "Yes-No",
+      "blurb": "noul: P(true)"
+    },
+    {
+      "id": "agentic",
+      "label": "Agentic",
+      "blurb": "routing, tool checks, guardrails, rules"
+    },
+    {
+      "id": "vision",
+      "label": "Vision",
+      "blurb": "over pixels · Qwen3.5 models only"
+    },
+    {
+      "id": "code",
+      "label": "Code",
+      "blurb": "yes/no over a function"
+    }
+  ],
+  "examples": [
+    {
+      "id": "triage-choice",
+      "family": "pick",
+      "title": "triage choice",
+      "golden": true,
+      "shows": "Route a support message to the team that should own it.",
+      "teaches": "A choice answer is a distribution, not a label: billing wins, 23% of the mass sits elsewhere, and the confidence (0.659) is what you act on.",
+      "state": "Help! My payouts have been failing for 3 days!",
+      "questions": [
+        {
+          "type": "choice",
+          "instructions": "Which team should handle this?",
+          "options": [
+            "billing",
+            "sales",
+            "retail"
+          ]
+        }
+      ],
+      "expected_shape": "choice -> billing (confidence ~0.659); billing ~0.773, sales ~0.121, retail ~0.106 (README, cpu)",
+      "measured": {
+        "label": "measured on cpu, strands-decider-2B-qwen3.5-v1-2610, 2026-10-10 02:20Z",
+        "model": "strands-decider-2B-qwen3.5-v1-2610",
+        "device": "cpu",
+        "torch": "2.14.1",
+        "question_ids": [
+          "choice_0"
+        ],
+        "answers": {
+          "choice_0": {
+            "type": "choice",
+            "display": "billing",
+            "value": "billing",
+            "probs": {
+              "billing": 0.7728,
+              "sales": 0.1213,
+              "retail": 0.106
+            },
+            "confidence": 0.6591,
+            "vote": "billing"
+          }
+        },
+        "input_tokens": 68,
+        "latency_ms": 329.141,
+        "cold": true
+      }
+    },
+    {
+      "id": "urgency-noul",
+      "family": "yesno",
+      "title": "urgency yes/no",
+      "golden": true,
+      "shows": "Is this message urgent?",
+      "teaches": "noul returns only P(true): with two outcomes the probability already is the uncertainty.",
+      "state": "Help! My payouts have been failing for 3 days!",
+      "questions": [
+        {
+          "type": "noul",
+          "instructions": "Does this convey urgency?",
+          "options": []
+        }
+      ],
+      "expected_shape": "noul ~0.858 (README, cpu)",
+      "measured": {
+        "label": "measured on cpu, strands-decider-2B-qwen3.5-v1-2610, 2026-10-10 02:20Z",
+        "model": "strands-decider-2B-qwen3.5-v1-2610",
+        "device": "cpu",
+        "torch": "2.14.1",
+        "question_ids": [
+          "noul_0"
+        ],
+        "answers": {
+          "noul_0": {
+            "type": "noul",
+            "display": "0.8581",
+            "value": 0.8581,
+            "probs": {
+              "true": 0.8581,
+              "false": 0.14190000000000003
+            },
+            "confidence": null,
+            "vote": "true"
+          }
+        },
+        "input_tokens": 86,
+        "latency_ms": 262.437,
+        "cold": false
+      }
+    },
+    {
+      "id": "frustration-score",
+      "family": "rate",
+      "title": "frustration score",
+      "golden": true,
+      "shows": "Rate the writer on calm < frustrated < depressed.",
+      "teaches": "A score is the expected value over the ordered levels you type, so the levels are the scale.",
+      "state": "Help! My payouts have been failing for 3 days!",
+      "questions": [
+        {
+          "type": "score",
+          "instructions": "How frustrated is the writer?",
+          "options": [
+            "calm",
+            "frustrated",
+            "depressed"
+          ]
+        }
+      ],
+      "expected_shape": "score ~1.03 (confidence ~0.509); calm ~0.196, frustrated ~0.574, depressed ~0.230 (README, cpu)",
+      "measured": {
+        "label": "measured on cpu, strands-decider-2B-qwen3.5-v1-2610, 2026-10-10 02:20Z",
+        "model": "strands-decider-2B-qwen3.5-v1-2610",
+        "device": "cpu",
+        "torch": "2.14.1",
+        "question_ids": [
+          "score_0"
+        ],
+        "answers": {
+          "score_0": {
+            "type": "score",
+            "display": "1.0345",
+            "value": 1.0345,
+            "probs": {
+              "calm": 0.1958,
+              "frustrated": 0.5738,
+              "depressed": 0.2303
+            },
+            "confidence": 0.5091,
+            "legend": {
+              "0": "calm",
+              "1": "frustrated",
+              "2": "depressed"
+            },
+            "vote": "frustrated"
+          }
+        },
+        "input_tokens": 84,
+        "latency_ms": 256.475,
+        "cold": false
+      }
+    },
+    {
+      "id": "multi-question",
+      "family": "pick",
+      "title": "three questions, one read",
+      "shows": "All three questions on one state, in one request.",
+      "teaches": "The state is encoded once, so extra questions about the same text are nearly free.",
+      "state": "Help! My payouts have been failing for 3 days!",
+      "questions": [
+        {
+          "type": "noul",
+          "instructions": "Does this convey urgency?",
+          "options": []
+        },
+        {
+          "type": "choice",
+          "instructions": "Which team should handle this?",
+          "options": [
+            "billing",
+            "sales",
+            "retail"
+          ]
+        },
+        {
+          "type": "score",
+          "instructions": "How frustrated is the writer?",
+          "options": [
+            "calm",
+            "frustrated",
+            "depressed"
+          ]
+        }
+      ],
+      "expected_shape": "noul ~0.858 · choice billing (~0.659) · score ~1.03 -- the same numbers as the three single-question examples",
+      "measured": {
+        "label": "measured on cpu, strands-decider-2B-qwen3.5-v1-2610, 2026-10-10 02:20Z",
+        "model": "strands-decider-2B-qwen3.5-v1-2610",
+        "device": "cpu",
+        "torch": "2.14.1",
+        "question_ids": [
+          "noul_0",
+          "choice_0",
+          "score_0"
+        ],
+        "answers": {
+          "noul_0": {
+            "type": "noul",
+            "display": "0.8581",
+            "value": 0.8581,
+            "probs": {
+              "true": 0.8581,
+              "false": 0.14190000000000003
+            },
+            "confidence": null,
+            "vote": "true"
+          },
+          "choice_0": {
+            "type": "choice",
+            "display": "billing",
+            "value": "billing",
+            "probs": {
+              "billing": 0.7728,
+              "sales": 0.1213,
+              "retail": 0.106
+            },
+            "confidence": 0.6591,
+            "vote": "billing"
+          },
+          "score_0": {
+            "type": "score",
+            "display": "1.0345",
+            "value": 1.0345,
+            "probs": {
+              "calm": 0.1958,
+              "frustrated": 0.5738,
+              "depressed": 0.2303
+            },
+            "confidence": 0.5091,
+            "legend": {
+              "0": "calm",
+              "1": "frustrated",
+              "2": "depressed"
+            },
+            "vote": "frustrated"
+          }
+        },
+        "input_tokens": 196,
+        "latency_ms": 604.615,
+        "cold": false
+      }
+    },
+    {
+      "id": "model-routing",
+      "family": "agentic",
+      "title": "model routing",
+      "shows": "Pick the LLM for a task: small and fast, or large and careful.",
+      "teaches": "Options come from the request, not the weights: rename them to your own tiers.",
+      "state": "User request: \"Draft a 3-page legal memo comparing the indemnification clauses in these two vendor contracts and flag any asymmetric liability caps.\"",
+      "questions": [
+        {
+          "type": "choice",
+          "instructions": "Which model should handle this request?",
+          "options": [
+            "small fast model",
+            "large careful model"
+          ]
+        }
+      ],
+      "expected_shape": "choice -> one of the two tiers, with P(each) and a confidence",
+      "measured": {
+        "label": "measured on cpu, strands-decider-2B-qwen3.5-v1-2610, 2026-10-10 02:20Z",
+        "model": "strands-decider-2B-qwen3.5-v1-2610",
+        "device": "cpu",
+        "torch": "2.14.1",
+        "question_ids": [
+          "choice_0"
+        ],
+        "answers": {
+          "choice_0": {
+            "type": "choice",
+            "display": "large careful model",
+            "value": "large careful model",
+            "probs": {
+              "small fast model": 0.0925,
+              "large careful model": 0.9075
+            },
+            "confidence": 0.8149,
+            "vote": "large careful model"
+          }
+        },
+        "input_tokens": 85,
+        "latency_ms": 239.644,
+        "cold": false
+      }
+    },
+    {
+      "id": "argument-check",
+      "family": "agentic",
+      "title": "argument check",
+      "shows": "Verify a tool call's arguments before it runs.",
+      "teaches": "JSON goes in as state; gate the call on P(true) with your own threshold.",
+      "state": "Tool: send_email(to, subject, body)\nCall: {\"to\": \"\", \"subject\": \"Q3 invoice\", \"body\": \"Hi, attached is the Q3 invoice. Best, Sam\"}",
+      "questions": [
+        {
+          "type": "noul",
+          "instructions": "Are the arguments complete and ready to execute?",
+          "options": []
+        }
+      ],
+      "expected_shape": "noul P(true) -- low, since `to` is empty",
+      "measured": {
+        "label": "measured on cpu, strands-decider-2B-qwen3.5-v1-2610, 2026-10-10 02:20Z",
+        "model": "strands-decider-2B-qwen3.5-v1-2610",
+        "device": "cpu",
+        "torch": "2.14.1",
+        "question_ids": [
+          "noul_0"
+        ],
+        "answers": {
+          "noul_0": {
+            "type": "noul",
+            "display": "0.1268",
+            "value": 0.1268,
+            "probs": {
+              "true": 0.1268,
+              "false": 0.8732
+            },
+            "confidence": null,
+            "vote": "false"
+          }
+        },
+        "input_tokens": 120,
+        "latency_ms": 277.906,
+        "cold": false
+      }
+    },
+    {
+      "id": "grounding-guardrail",
+      "family": "agentic",
+      "title": "grounding check",
+      "shows": "Is a claim supported by the passage it cites?",
+      "teaches": "With evidence and claim in one state, noul is a hallucination detector in one pass.",
+      "state": "Passage: The clinic opens at 8:00 on weekdays and 9:00 on Saturdays. It is closed on Sundays and public holidays.\nClaim: The clinic is open on Sundays from 9:00.",
+      "questions": [
+        {
+          "type": "noul",
+          "instructions": "Is the claim supported by the passage?",
+          "options": []
+        }
+      ],
+      "expected_shape": "noul P(true) -- low: the passage says closed on Sundays",
+      "measured": {
+        "label": "measured on cpu, strands-decider-2B-qwen3.5-v1-2610, 2026-10-10 02:20Z",
+        "model": "strands-decider-2B-qwen3.5-v1-2610",
+        "device": "cpu",
+        "torch": "2.14.1",
+        "question_ids": [
+          "noul_0"
+        ],
+        "answers": {
+          "noul_0": {
+            "type": "noul",
+            "display": "0.0423",
+            "value": 0.0423,
+            "probs": {
+              "true": 0.0423,
+              "false": 0.9577
+            },
+            "confidence": null,
+            "vote": "false"
+          }
+        },
+        "input_tokens": 125,
+        "latency_ms": 285.565,
+        "cold": false
+      }
+    },
+    {
+      "id": "rule-application",
+      "family": "agentic",
+      "title": "apply a policy",
+      "shows": "A written policy plus a case: which outcome does the policy dictate?",
+      "teaches": "Rules written in plain words apply at request time, nothing to retrain.",
+      "state": "Policy: Refunds are approved automatically within 14 days of purchase. Between 15 and 30 days a refund needs a manager's approval. After 30 days refunds are denied unless the item arrived defective.\nCase: Purchased 22 days ago, item works, customer changed their mind.",
+      "questions": [
+        {
+          "type": "choice",
+          "instructions": "What does the policy say should happen?",
+          "options": [
+            "approve automatically",
+            "needs manager approval",
+            "deny"
+          ]
+        }
+      ],
+      "expected_shape": "choice -> needs manager approval (22 days falls in the 15-30 band)",
+      "measured": {
+        "label": "measured on cpu, strands-decider-2B-qwen3.5-v1-2610, 2026-10-10 02:20Z",
+        "model": "strands-decider-2B-qwen3.5-v1-2610",
+        "device": "cpu",
+        "torch": "2.14.1",
+        "question_ids": [
+          "choice_0"
+        ],
+        "answers": {
+          "choice_0": {
+            "type": "choice",
+            "display": "needs manager approval",
+            "value": "needs manager approval",
+            "probs": {
+              "approve automatically": 0.0292,
+              "needs manager approval": 0.9456,
+              "deny": 0.0252
+            },
+            "confidence": 0.9184,
+            "vote": "needs manager approval"
+          }
+        },
+        "input_tokens": 126,
+        "latency_ms": 288.074,
+        "cold": false
+      }
+    },
+    {
+      "id": "language-id",
+      "family": "pick",
+      "title": "language id",
+      "shows": "Which language is 'sihamba ngokushesha'?",
+      "teaches": "Options can be anything nameable; a label set of languages works like a label set of teams.",
+      "state": "sihamba ngokushesha",
+      "questions": [
+        {
+          "type": "choice",
+          "instructions": "What language is this phrase in?",
+          "options": [
+            "English",
+            "Zulu",
+            "Dutch"
+          ]
+        }
+      ],
+      "expected_shape": "choice -> Zulu",
+      "measured": {
+        "label": "measured on cpu, strands-decider-2B-qwen3.5-v1-2610, 2026-10-10 02:20Z",
+        "model": "strands-decider-2B-qwen3.5-v1-2610",
+        "device": "cpu",
+        "torch": "2.14.1",
+        "question_ids": [
+          "choice_0"
+        ],
+        "answers": {
+          "choice_0": {
+            "type": "choice",
+            "display": "Zulu",
+            "value": "Zulu",
+            "probs": {
+              "English": 0.0444,
+              "Zulu": 0.9112,
+              "Dutch": 0.0444
+            },
+            "confidence": 0.8668,
+            "vote": "Zulu"
+          }
+        },
+        "input_tokens": 66,
+        "latency_ms": 244.617,
+        "cold": false
+      }
+    },
+    {
+      "id": "judge-score",
+      "family": "rate",
+      "title": "judge an answer",
+      "shows": "Score a model's answer on a rubric from 0 to 4.",
+      "teaches": "An ordered rubric makes the decider a cheap judge: the expected value is the grade.",
+      "state": "Question: What is the capital of Australia?\nModel answer: The capital of Australia is Sydney, its largest city.\nRubric: 4 = correct and complete, 3 = correct with a minor flaw, 2 = partly correct, 1 = mostly wrong, 0 = wrong or no answer.",
+      "questions": [
+        {
+          "type": "score",
+          "instructions": "Grade the model answer against the rubric.",
+          "options": [
+            "0",
+            "1",
+            "2",
+            "3",
+            "4"
+          ]
+        }
+      ],
+      "expected_shape": "score near the low end (Canberra is the capital)",
+      "measured": {
+        "label": "measured on cpu, strands-decider-2B-qwen3.5-v1-2610, 2026-10-10 02:20Z",
+        "model": "strands-decider-2B-qwen3.5-v1-2610",
+        "device": "cpu",
+        "torch": "2.14.1",
+        "question_ids": [
+          "score_0"
+        ],
+        "answers": {
+          "score_0": {
+            "type": "score",
+            "display": "2.3892",
+            "value": 2.3892,
+            "probs": {
+              "0": 0.1218,
+              "1": 0.156,
+              "2": 0.1965,
+              "3": 0.2626,
+              "4": 0.2631
+            },
+            "confidence": 0.3895,
+            "legend": {
+              "0": "0",
+              "1": "1",
+              "2": "2",
+              "3": "3",
+              "4": "4"
+            },
+            "vote": "4"
+          }
+        },
+        "input_tokens": 158,
+        "latency_ms": 330.912,
+        "cold": false
+      }
+    },
+    {
+      "id": "signature-signed",
+      "family": "vision",
+      "title": "signature: filled",
+      "vision_only": true,
+      "image": "form_signed.png",
+      "shows": "A release form whose signature block is signed and dated.",
+      "teaches": "The image enters the state as vision tokens; the readout and confidence are the text model's.",
+      "state": "",
+      "questions": [
+        {
+          "type": "noul",
+          "instructions": "Is the signature block filled in?",
+          "options": []
+        }
+      ],
+      "expected_shape": "noul P(true) -- higher than on the empty form",
+      "measured": {
+        "label": "measured on cpu, strands-decider-2B-qwen3.5-v1-2610, 2026-10-10 02:20Z",
+        "model": "strands-decider-2B-qwen3.5-v1-2610",
+        "device": "cpu",
+        "torch": "2.14.1",
+        "question_ids": [
+          "noul_0"
+        ],
+        "answers": {
+          "noul_0": {
+            "type": "noul",
+            "display": "0.6868",
+            "value": 0.6868,
+            "probs": {
+              "true": 0.6868,
+              "false": 0.31320000000000003
+            },
+            "confidence": null,
+            "vote": "true"
+          }
+        },
+        "input_tokens": 232,
+        "latency_ms": 1160.211,
+        "cold": true
+      }
+    },
+    {
+      "id": "signature-empty",
+      "family": "vision",
+      "title": "signature: empty",
+      "vision_only": true,
+      "image": "form_unsigned.png",
+      "shows": "The same form, signature block empty.",
+      "teaches": "The gap between the two P(true) values is what the model reads from the pixels.",
+      "state": "",
+      "questions": [
+        {
+          "type": "noul",
+          "instructions": "Is the signature block filled in?",
+          "options": []
+        }
+      ],
+      "expected_shape": "noul P(true) -- lower than on the signed form",
+      "measured": {
+        "label": "measured on cpu, strands-decider-2B-qwen3.5-v1-2610, 2026-10-10 02:20Z",
+        "model": "strands-decider-2B-qwen3.5-v1-2610",
+        "device": "cpu",
+        "torch": "2.14.1",
+        "question_ids": [
+          "noul_0"
+        ],
+        "answers": {
+          "noul_0": {
+            "type": "noul",
+            "display": "0.1344",
+            "value": 0.1344,
+            "probs": {
+              "true": 0.1344,
+              "false": 0.8656
+            },
+            "confidence": null,
+            "vote": "false"
+          }
+        },
+        "input_tokens": 232,
+        "latency_ms": 1057.52,
+        "cold": false
+      }
+    },
+    {
+      "id": "shape-choice",
+      "family": "vision",
+      "title": "which shape",
+      "vision_only": true,
+      "image": "shapes.png",
+      "shows": "One large shape is drawn; pick which.",
+      "teaches": "choice over images works like choice over text: the option tokens follow the image.",
+      "state": "",
+      "questions": [
+        {
+          "type": "choice",
+          "instructions": "Which shape is drawn in the image?",
+          "options": [
+            "circle",
+            "triangle",
+            "square"
+          ]
+        }
+      ],
+      "expected_shape": "choice -> triangle",
+      "measured": {
+        "label": "measured on cpu, strands-decider-2B-qwen3.5-v1-2610, 2026-10-10 02:20Z",
+        "model": "strands-decider-2B-qwen3.5-v1-2610",
+        "device": "cpu",
+        "torch": "2.14.1",
+        "question_ids": [
+          "choice_0"
+        ],
+        "answers": {
+          "choice_0": {
+            "type": "choice",
+            "display": "triangle",
+            "value": "triangle",
+            "probs": {
+              "circle": 0.0119,
+              "triangle": 0.9766,
+              "square": 0.0115
+            },
+            "confidence": 0.9649,
+            "vote": "triangle"
+          }
+        },
+        "input_tokens": 256,
+        "latency_ms": 1128.372,
+        "cold": false
+      }
+    },
+    {
+      "id": "empty-list-code",
+      "family": "code",
+      "title": "empty list?",
+      "shows": "Does this Python function handle the empty list?",
+      "teaches": "Code is state; one forward pass answers a property of the function.",
+      "state": "def average(xs):\n    return sum(xs) / len(xs)",
+      "questions": [
+        {
+          "type": "noul",
+          "instructions": "Does this function handle the empty list?",
+          "options": []
+        }
+      ],
+      "expected_shape": "noul P(true) -- low: len([]) == 0 divides by zero",
+      "measured": {
+        "label": "measured on cpu, strands-decider-2B-qwen3.5-v1-2610, 2026-10-10 02:20Z",
+        "model": "strands-decider-2B-qwen3.5-v1-2610",
+        "device": "cpu",
+        "torch": "2.14.1",
+        "question_ids": [
+          "noul_0"
+        ],
+        "answers": {
+          "noul_0": {
+            "type": "noul",
+            "display": "0.2203",
+            "value": 0.2203,
+            "probs": {
+              "true": 0.2203,
+              "false": 0.7797000000000001
+            },
+            "confidence": null,
+            "vote": "false"
+          }
+        },
+        "input_tokens": 91,
+        "latency_ms": 359.318,
+        "cold": false
+      }
+    }
+  ]
+}

@@ -1,0 +1,202 @@
+/* landing.css -- landing sections: hero, how-to-use CTA, model row, footer.
+   Builds only on tokens.css (strands system: flat black/white, one green, 1px, rx 8, mono headings).
+   Scoped under .ld so nothing leaks into the app's components. Selectors carry .gradio-container
+   where app.css sets !important on the same element (buttons, h1, a, code), so the landing wins by
+   specificity, not by luck. */
+
+.ld { font-family: var(--sr-text); color: var(--text); --hero-title: var(--fg); }
+.dark .ld, body.dark .ld, :root.dark .ld { --hero-title: var(--accent); }
+.ld * { box-sizing: border-box; }
+.ld .mono { font-family: var(--sr-mono); font-variant-numeric: tabular-nums; }
+.ld .muted { color: var(--muted); }
+.ld code { font-family: var(--sr-mono); font-size: 0.85em; background: var(--code-inline); color: var(--text); border-radius: var(--sr-radius-small); padding: 1px 5px; }
+.ld p { margin: 0; line-height: var(--lh-body); }
+.gradio-container .ld a { padding: 0; margin: 0; }
+.ld a:not(.sr-btn):not(.ld-badge), .gradio-container .ld a:not(.sr-btn):not(.ld-badge) { color: var(--fg); text-decoration: underline; text-decoration-color: var(--hair); text-underline-offset: 2px; }
+.gradio-container .ld a:not(.sr-btn):hover { text-decoration-color: var(--accent); }
+
+/* ---- robots primitives: .sr-btn, .sr-install, .sr-copy ---- */
+.ld .sr-btn, .gradio-container .ld a.sr-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; padding: 0.55rem 1.1rem; min-width: 9.5rem;
+  border-radius: var(--sr-radius-pill); font-family: var(--sr-mono); font-weight: var(--w-semibold); font-size: 0.76rem; letter-spacing: 0.01em;
+  background: var(--pill-bg); border: var(--hairline) solid var(--pill-border); color: var(--fg); text-decoration: none; cursor: pointer;
+  transition: opacity var(--t-fast) ease, border-color var(--t-fast) ease;
+}
+.ld .sr-btn::after { content: "\2192"; }
+.ld .sr-btn:hover { opacity: 0.8; border-color: var(--accent); }
+.ld .sr-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ld .sr-btn--primary, .gradio-container .ld a.sr-btn--primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.ld .sr-install {
+  display: inline-flex; align-items: center; gap: 0.6rem; max-width: 100%; font-family: var(--sr-mono); font-size: 0.72rem; color: var(--fg);
+  background: var(--pill-bg); border: var(--hairline) solid var(--pill-border); border-radius: var(--sr-radius-pill); padding: 0.4rem 0.5rem 0.4rem 1rem;
+}
+.ld .sr-install::before { content: "$"; color: var(--accent); flex: none; }
+.ld .sr-install code { background: none; padding: 0; font-size: inherit; color: inherit; white-space: nowrap; overflow-x: auto; scrollbar-width: none; }
+.ld .sr-install:has(.sr-copy.is-copied)::before { content: "\2713"; }
+.gradio-container .ld button.sr-copy, .ld .sr-copy {
+  font: inherit; font-family: var(--sr-mono) !important; font-size: 0.58rem !important; font-weight: var(--w-medium) !important; letter-spacing: 0.04em; line-height: 1.2;
+  padding: 0.2rem 0.6rem !important; border: var(--hairline) solid var(--pill-border) !important; border-radius: var(--sr-radius-pill) !important;
+  background: var(--pill-bg) !important; color: var(--fg) !important; white-space: nowrap; cursor: pointer; flex: none; box-shadow: none !important; min-width: 0 !important;
+  transition: border-color var(--t-fast) ease, color var(--t-fast) ease;
+}
+.gradio-container .ld button.sr-copy:hover, .ld .sr-copy:hover { border-color: var(--accent) !important; }
+.gradio-container .ld button.sr-copy.is-copied, .ld .sr-copy.is-copied { border-color: var(--accent) !important; color: var(--accent) !important; }
+
+/* ---- 1. hero ---- */
+.ld-hero { position: relative; isolation: isolate; display: grid; grid-template-columns: 1.05fr 1fr; gap: 2.5rem; align-items: center; margin: 1.2rem 0 2.4rem; padding: 2.2rem 2rem 1rem; }
+.ld-hero::before { content: ""; position: absolute; inset: 0 0 20%; z-index: -1; border-radius: 40px; pointer-events: none;
+  background-image: radial-gradient(var(--dot) 1.1px, transparent 1.6px); background-size: 12px 12px;
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,.55), transparent); mask-image: linear-gradient(to bottom, rgba(0,0,0,.55), transparent); }
+.ld-hero__copy { min-width: 0; }
+.gradio-container .ld h1.ld-hero__title, .ld .ld-hero__title { font-family: var(--sr-mono) !important; font-size: 2.35rem !important; line-height: 1.2; letter-spacing: 0.05em; font-weight: var(--w-medium) !important; color: var(--hero-title) !important; margin: 0 0 1.1rem; }
+.ld .ld-hero__title em { font-style: normal; color: var(--fg); }
+.ld .ld-hero__lead { font-size: 0.95rem; color: var(--text); margin: 0 0 1.4rem; max-width: 32rem; }
+.ld-hero__actions { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; }
+.ld .ld-hero__note { font-size: var(--fs-small); color: var(--muted); max-width: 32rem; }
+.ld-hero__stage { min-width: 0; }
+.ld-fig { display: block; width: 100%; height: auto; overflow: visible; }
+.ld .ld-fig__cap { font-family: var(--sr-mono); font-size: var(--fs-caption); letter-spacing: 0.02em; color: var(--muted); margin-top: 0.5rem; text-align: center; }
+.ld .ld-fig__cap code { font-size: inherit; padding: 0 3px; }
+
+/* figure: strands drawing rules (1px, rx 8, dashed cluster, accent only on the signal) */
+.ld-fig .box { fill: var(--bg); stroke: var(--fg); stroke-width: 1; }
+.ld-fig .box.layer { fill: var(--chip-bg); stroke: var(--hair); }
+.ld-fig .box.answer { stroke: var(--accent); fill: var(--accent-soft); }
+.ld-fig .box.soft { stroke: var(--fg); }
+.ld-fig .box.out { stroke: var(--hair); }
+.ld-fig .cluster { fill: none; stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 3; }
+.ld-fig .edge { fill: none; stroke: var(--muted); stroke-width: 1; }
+.ld-fig .edge.sig { stroke: var(--accent); }
+.ld-fig .lab { font-family: var(--sr-mono); font-size: 11px; fill: var(--text); text-anchor: middle; }
+.ld-fig .lab.layerlab { fill: var(--muted); font-size: 9px; }
+.ld-fig .lab.answerlab { fill: var(--fg); }
+.ld-fig .cap { font-family: var(--sr-mono); font-size: 9.5px; letter-spacing: 0.05em; text-transform: uppercase; fill: var(--fg); text-anchor: middle; }
+.ld-fig .cap.muted { fill: var(--muted); text-transform: none; letter-spacing: 0.02em; }
+.ld-fig .cap.tiny { font-size: 8.5px; }
+.ld-fig .cap.accent { fill: var(--accent); text-transform: none; letter-spacing: 0; font-size: 8.5px; }
+.ld-fig .cap.score { fill: var(--accent); text-anchor: start; text-transform: none; letter-spacing: 0; font-size: 8.5px; opacity: 0; }
+.ld-fig .ptr { fill: none; stroke: var(--accent); stroke-width: 1; stroke-dasharray: 100; stroke-dashoffset: 100; }
+.ld-fig .box.opt { transition: none; }
+/* 1.2 s loop, each of the three comparisons owns a 0.4 s third; negative delays stagger them */
+@keyframes ld-ptr { 0% { stroke-dashoffset: 100; opacity: 1; } 22% { stroke-dashoffset: 0; } 31% { stroke-dashoffset: 0; opacity: 1; } 33.3% { stroke-dashoffset: 0; opacity: 0; } 99.9% { stroke-dashoffset: 0; opacity: 0; } 100% { stroke-dashoffset: 100; opacity: 1; } }
+@keyframes ld-opt { 0% { fill: var(--bg); stroke: var(--fg); } 20% { fill: var(--accent-soft); stroke: var(--accent); } 31% { fill: var(--accent-soft); stroke: var(--accent); } 33.3% { fill: var(--bg); stroke: var(--fg); } 100% { fill: var(--bg); stroke: var(--fg); } }
+@keyframes ld-score { 0% { opacity: 0; } 20% { opacity: 0; } 24% { opacity: 1; } 31% { opacity: 1; } 33.3% { opacity: 0; } 100% { opacity: 0; } }
+.ld-fig .ptr.p0, .ld-fig .box.o0, .ld-fig .score.s0 { animation-delay: 0s; }
+.ld-fig .ptr.p1, .ld-fig .box.o1, .ld-fig .score.s1 { animation-delay: 0.4s; }
+.ld-fig .ptr.p2, .ld-fig .box.o2, .ld-fig .score.s2 { animation-delay: 0.8s; }
+.ld-fig .ptr { animation: ld-ptr 1.2s linear infinite backwards; }
+.ld-fig .box.opt { animation: ld-opt 1.2s linear infinite backwards; }
+.ld-fig .score { animation: ld-score 1.2s linear infinite backwards; }
+.ld-hero__stage:hover .ld-fig * { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .ld-fig .ptr, .ld-fig .box.opt, .ld-fig .score { animation: none; }
+  .ld-fig .ptr { stroke-dashoffset: 0; opacity: 1; }
+  .ld-fig .score { opacity: 1; }
+}
+
+
+/* ---- section heads (match app.css .sdp-section) ---- */
+.ld-sec { margin: 1.6rem 0 0.8rem; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.gradio-container .ld .ld-sec h2, .ld .ld-sec h2 { margin: 0; font-family: var(--sr-mono) !important; font-size: 1.1rem !important; font-weight: var(--w-semibold) !important; letter-spacing: var(--tracking-h); color: var(--fg) !important; }
+.ld .ld-sec .sub { color: var(--muted); font-family: var(--sr-mono); font-size: var(--fs-caption); letter-spacing: var(--tracking-caption); text-transform: uppercase; }
+
+/* ---- 3. how to use now ---- */
+.ld-steps { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.7fr); grid-template-rows: auto 1fr; align-items: start; gap: 14px; }
+.ld-step { position: relative; background: var(--card-bg); border: var(--hairline) solid var(--card-border); border-radius: var(--sr-radius); padding: 18px 18px 18px 18px; display: flex; flex-direction: column; gap: 10px; min-width: 0; transition: border-color var(--t-fast) ease; }
+.ld-step:hover { border-color: var(--accent); }
+.ld-step--wide { grid-column: 2; grid-row: 1 / span 2; }
+.ld .ld-step__n { position: absolute; top: 14px; right: 16px; font-size: var(--fs-caption); letter-spacing: 0.08em; color: var(--muted); border: var(--hairline) solid var(--pill-border); border-radius: var(--sr-radius-pill); padding: 2px 8px; }
+.gradio-container .ld .ld-step h3, .ld .ld-step h3 { margin: 0; font-family: var(--sr-mono) !important; font-size: 0.95rem !important; font-weight: var(--w-semibold) !important; color: var(--fg) !important; letter-spacing: var(--tracking-h); }
+.ld .ld-step p { font-size: 0.9rem; max-width: 60ch; }
+.ld .ld-step .sr-btn { align-self: flex-start; margin-top: auto; }
+.ld .ld-step__sub { font-family: var(--sr-mono); font-size: var(--fs-caption); letter-spacing: var(--tracking-caption); text-transform: uppercase; color: var(--muted); margin-top: 6px; }
+.ld .ld-step__cite { font-size: var(--fs-small); color: var(--muted); }
+/* tabs */
+.ld-tabs { display: flex; flex-direction: column; gap: 10px; }
+.ld-tabs__bar { display: flex; gap: 0; border-bottom: var(--hairline) solid var(--hair); }
+.gradio-container .ld .ld-tabs__bar button, .ld .ld-tabs__bar button {
+  font-family: var(--sr-mono) !important; font-size: var(--fs-label) !important; font-weight: var(--w-medium) !important; letter-spacing: 0.02em;
+  background: transparent !important; color: var(--muted) !important; border: 0 !important; border-bottom: 2px solid transparent !important; border-radius: 0 !important;
+  padding: 6px 12px 8px !important; margin-bottom: -1px; cursor: pointer; box-shadow: none !important; transition: color var(--t-fast) ease, border-color var(--t-fast) ease;
+}
+.gradio-container .ld .ld-tabs__bar button.is-on, .ld .ld-tabs__bar button.is-on { color: var(--fg) !important; border-bottom-color: var(--accent) !important; }
+.ld-tabs__pane { display: none; }
+.ld-tabs__pane.is-on { display: block; }
+.ld-tabs__pane .sr-install { max-width: 100%; }
+/* terminal fence with the ••• bar */
+.ld-term { border: var(--hairline) solid var(--pill-border); border-radius: var(--sr-radius); overflow: hidden; background: var(--bg); }
+.ld-term__head { display: flex; align-items: center; gap: 10px; padding: 6px 10px; background: var(--term-head); font-family: var(--sr-mono); font-size: var(--fs-caption); letter-spacing: 0.03em; color: var(--text); }
+.ld-term__head .dots { display: inline-flex; gap: 5px; }
+.ld-term__head .dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); opacity: 0.55; }
+.ld-term__head .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ld .ld-term__body, .ld .ld-term__out { margin: 0; padding: 12px 14px; font-family: var(--sr-mono); font-size: 0.74rem; line-height: 1.55; color: var(--text); overflow-x: auto; background: var(--bg); }
+.ld .ld-term__body code, .ld .ld-term__out code { background: none; padding: 0; font-size: inherit; color: inherit; white-space: pre; }
+.ld .ld-term__out { border-top: var(--hairline) dashed var(--hair); color: var(--muted); position: relative; padding-top: 26px; }
+.ld .ld-term__out .o { position: absolute; top: 7px; right: 12px; font-size: 0.56rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); background: var(--bg); border: var(--hairline) solid var(--pill-border); border-radius: var(--sr-radius-pill); padding: 0 0.5rem; line-height: 1.6; }
+
+/* ---- 4. model row ---- */
+.ld-models__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; margin-bottom: 10px; }
+.ld .ld-model { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 14px 14px 12px; background: var(--card-bg); border: var(--hairline) solid var(--card-border); border-radius: var(--sr-radius); color: var(--text); text-decoration: none; transition: border-color var(--t-fast) ease; }
+.ld .ld-model:hover { border-color: var(--accent); }
+.ld .ld-model__base { font-size: 0.95rem; font-weight: var(--w-semibold); color: var(--fg); line-height: 1.3; }
+.ld .ld-model__name, .gradio-container .ld a.ld-model__name { font-size: 0.68rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: none; }
+.ld .ld-model__name:hover, .gradio-container .ld a.ld-model__name:hover { color: var(--fg); text-decoration: underline; text-decoration-color: var(--accent); }
+.ld .ld-model__row { display: flex; flex-wrap: wrap; gap: 6px; }
+.gradio-container .ld a.ld-badge, .ld .ld-badge { display: inline-flex; align-items: baseline; gap: 4px; font-family: var(--sr-mono); font-size: 0.66rem; line-height: 1; padding: 4px 7px; border-radius: var(--sr-radius-pill); border: var(--hairline) solid var(--pill-border); color: var(--text); background: var(--chip-bg); text-decoration: none; white-space: nowrap; }
+.gradio-container .ld a.ld-badge:hover { border-color: var(--accent); }
+.ld .ld-badge .k { color: var(--muted); font-size: 0.58rem; letter-spacing: 0.04em; text-transform: uppercase; }
+.ld .ld-badge b { color: var(--fg); font-weight: var(--w-semibold); }
+.ld .ld-badge.muted { color: var(--muted); }
+.ld .ld-tag { display: inline-flex; align-items: center; font-family: var(--sr-mono); font-size: 0.6rem; letter-spacing: 0.05em; text-transform: uppercase; line-height: 1; padding: 4px 7px; border-radius: var(--sr-radius-pill); border: var(--hairline) solid var(--hair); color: var(--muted); background: var(--chip-bg); }
+.ld .ld-tag.on { color: var(--text); border-color: color-mix(in srgb, var(--accent) 55%, transparent); background: var(--accent-soft); }
+
+/* ---- 5. footer (robots home-footer: rounded CTA over the green surface, columns, full-width wordmark) ---- */
+/* contained in the content column (a full-bleed negative-margin trick measured inconsistently inside Gradio's .block) */
+.ld-cta { background: var(--surface-green); margin-top: 2.6rem; border-radius: var(--sr-radius) var(--sr-radius) 0 0; }
+.ld-cta__panel { background: var(--bg); border-radius: 0 0 64px 64px; padding: 2.4rem 1rem 2.8rem; text-align: center; }
+.ld .ld-cta__title { font-family: var(--sr-mono); font-size: 1.45rem; letter-spacing: 0.06em; font-weight: var(--w-semibold); margin: 0 auto 1.1rem; max-width: 36rem; color: var(--fg); line-height: 1.3; }
+.ld .ld-cta__links { display: flex; justify-content: center; flex-wrap: wrap; gap: 1.2rem 2rem; font-family: var(--sr-mono); font-size: 0.75rem; font-weight: var(--w-semibold); }
+.gradio-container .ld .ld-cta__links a, .ld .ld-cta__links a { color: var(--fg); text-decoration: none; }
+.ld .ld-cta__links a:hover { color: var(--accent); }
+.ld-footer { background: var(--surface-green); color: var(--sr-black); padding-top: 2rem; border-radius: 0 0 var(--sr-radius) var(--sr-radius); overflow: hidden; }
+/* !important: over the green surface the text MUST be black (5.5:1); Gradio's own .prose a / dark rules otherwise win */
+.gradio-container .ld .ld-footer a, .ld .ld-footer a { color: var(--sr-black) !important; text-decoration: none; }
+.ld .ld-footer a:hover { text-decoration: underline; }
+.ld-footer__inner { max-width: 1232px; margin: 0 auto; padding: 0 24px; }
+.ld .ld-footer__kicker, .ld .ld-footer__heading { font-family: var(--sr-mono); font-size: var(--fs-caption); font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; margin: 0 0 0.6rem; color: var(--sr-black) !important; }
+.ld .sr-install--footer { background: var(--sr-black); border-color: var(--sr-black); color: #ffffff; margin: 0 0 1.8rem; }
+.ld .sr-install--footer .sr-copy, .gradio-container .ld .sr-install--footer button.sr-copy { background: var(--sr-black) !important; color: #ffffff !important; border-color: #666464 !important; }
+.ld-footer__columns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.2rem; max-width: 44rem; }
+.ld-footer__columns ul { list-style: none; margin: 0; padding: 0; font-size: var(--fs-small); line-height: 1.9; }
+.ld-footmark { padding: 2rem 24px 0.5rem; }
+.ld-footmark .ld-wordmark { display: block; width: 100%; height: auto; color: var(--sr-black); opacity: 0.9; }
+.ld-footmark .ld-wordmark path, .ld-footer__brand .ld-wordmark path { fill: var(--sr-black) !important; }
+.ld-footer__legal { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 2rem; padding: 0.8rem 24px 1.4rem; font-family: var(--sr-mono); font-size: 0.6rem; max-width: 1280px; margin: 0 auto; }
+.ld-footer__brand { display: inline-flex; align-items: center; gap: 0.5rem; }
+.ld-footer__brand .ld-mark { width: 16px; height: 16px; image-rendering: pixelated; }
+.ld-footer__brand .ld-mark path { fill: var(--sr-black) !important; }
+.ld-footer__brand .ld-wordmark-wrap .ld-wordmark { height: 0.8rem; width: auto; display: block; color: var(--sr-black); }
+.ld-footer__brand .proj { font-weight: var(--w-semibold); }
+.ld .ld-footer__legal .muted { color: var(--sr-black) !important; opacity: 0.85; }
+.ld .ld-footer__columns li, .ld .ld-footer__legal { color: var(--sr-black); }
+
+/* ---- responsive ---- */
+@media (max-width: 960px) {
+  .ld-hero { grid-template-columns: minmax(0, 1fr); gap: 1.5rem; margin: 0.5rem 0 2rem; padding: 1.5rem 0.8rem 0.5rem; }
+  .ld-hero > * { min-width: 0; }
+  .gradio-container .ld h1.ld-hero__title, .ld .ld-hero__title { font-size: clamp(1.6rem, 7.5vw, 2.2rem) !important; overflow-wrap: anywhere; }
+  .ld-steps { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; }
+  .ld-step--wide { grid-column: auto; grid-row: auto; }
+  .ld-footer__columns { max-width: none; }
+}
+@media (max-width: 640px) {
+  /* the architecture figure is drawn for >= 560 px: below that its labels fall under 7 px and it pushes the ask bar off the first screen; the footer keeps the architecture link */
+  .ld-hero__stage { display: none; }
+  .ld-hero__actions .sr-btn { flex: 1 1 auto; min-width: 0; white-space: nowrap; }
+  .ld .sr-install { flex: 1 1 100%; font-size: 0.68rem; }
+  .ld .sr-btn { min-height: 44px; }
+  .ld-footer__columns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ld-cta__panel { border-radius: 0 0 32px 32px; }
+  .ld .ld-cta__title { font-size: 1.15rem; }
+  .ld .ld-fig__cap { text-align: left; }
+}

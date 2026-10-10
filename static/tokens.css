@@ -1,0 +1,93 @@
+/* tokens.css -- design tokens of the Strands Decider Playground.
+   Source of truth: strands-labs/robots origin/main b495049c9 docs/stylesheets/extra.css
+   (the tokens are copied, not linked, so the page cannot drift when that file moves).
+   The strandsagents.com system: flat black-or-white surfaces, one green, 1px ink outlines,
+   8px radius, JetBrains Mono headings over Space Grotesk text. No glass, no blur, no shadows.
+   Two schemes: paper (light) and dark; dark follows prefers-color-scheme via Gradio's .dark. */
+
+@font-face { font-family: "Space Grotesk"; font-weight: 400; font-style: normal; font-display: swap; src: url("fonts/SpaceGrotesk-400.woff2") format("woff2"); }
+@font-face { font-family: "JetBrains Mono"; font-weight: 500 600; font-style: normal; font-display: swap; src: url("fonts/JetBrainsMono-500.woff2") format("woff2"); }
+
+:root {
+  /* ---- constants (robots :root) ---- */
+  --sr-radius: 8px;
+  --sr-radius-pill: 999px;
+  --sr-radius-small: 3px;
+  --sr-black: #000000;
+  --sr-charcoal-1: #28292a;
+  --sr-charcoal-2: #3d3c3c;
+  --sr-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sr-text: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --hairline: 1px;
+
+  /* ---- paper (light) ---- */
+  --bg: #ffffff;
+  --fg: var(--sr-black);            /* ink: headings, card outlines */
+  --text: var(--sr-charcoal-2);     /* --md-typeset-color */
+  --text-light: #666464;            /* --md-default-fg-color--lighter */
+  --muted: #767373;
+  --hair: rgba(0, 0, 0, 0.15);      /* --md-default-fg-color--lightest */
+  --accent: #007a3d;                /* deepened so it clears AA as text */
+  --accent-bright: #02a435;
+  --accent-soft: rgba(2, 164, 53, 0.12);
+  --on-accent: #ffffff;
+  --card-bg: #ffffff;
+  --card-border: var(--sr-black);
+  --chip-bg: #f4f4f4;
+  --band: var(--chip-bg);                 /* section band: the chip surface, cards (bg) sit on it */
+  --code-inline: #f4f4f4;
+  --pill-bg: #ffffff;
+  --pill-border: #999696;
+  --dot: #9fd9b0;
+  --surface-green: #e6f6e7;
+  --term-head: #eaeef2;
+  --viewer-bg: #f4f4f4;
+  --grid-major: #b6b6b6;
+  --grid-minor: #d9d9d9;
+  --real: #946e00;                  /* .sr-chip-real: the one non-green signal colour */
+  --band-weight: #d9d9d9;
+  --band-baseline: #b6b6b6;
+
+  /* ---- type scale (robots) ---- */
+  --w-regular: 400; --w-medium: 500; --w-semibold: 600;
+  --fs-caption: 0.62rem;  --fs-chip: 0.58rem; --fs-small: 0.72rem; --fs-label: 0.8rem; --fs-lede: 0.95rem;
+  --tracking-h1: 0.03em; --tracking-h: 0.01em; --tracking-caption: 0.05em;
+  --lh-body: 1.55;
+
+  /* ---- motion (robots: 120ms hover, 600ms count-up; ours 150-600) ---- */
+  --t-fast: 120ms; --t-base: 200ms; --t-grow: 500ms; --t-reveal: 600ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dark, body.dark, :root.dark {
+  --bg: var(--sr-black);            /* pure black, not #0a0a0a */
+  --fg: #ffffff;
+  --text: #b6b6b6;
+  --text-light: #999696;
+  --muted: #999696;
+  --hair: var(--sr-charcoal-1);
+  --accent: #00cc60;
+  --accent-bright: #00cc60;
+  --accent-soft: rgba(0, 204, 96, 0.14);
+  --on-accent: var(--sr-black);
+  --card-bg: var(--sr-black);
+  --card-border: #ffffff;
+  --chip-bg: var(--sr-charcoal-1);
+  --band: color-mix(in srgb, #ffffff 5%, #000000);   /* fg at 5% over bg: one step above black */
+  --code-inline: var(--sr-charcoal-2);
+  --pill-bg: var(--sr-charcoal-1);
+  --pill-border: var(--sr-charcoal-2);
+  --dot: #00cc60;
+  --surface-green: color-mix(in srgb, #00cc60 74%, #000);
+  --term-head: #2f363d;
+  --viewer-bg: #111213;
+  --grid-major: #46505c;
+  --grid-minor: #303740;
+  --real: #f6bc00;
+  --band-weight: var(--sr-charcoal-1);
+  --band-baseline: var(--sr-charcoal-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --t-fast: 0ms; --t-base: 0ms; --t-grow: 0ms; --t-reveal: 0ms; }
+}

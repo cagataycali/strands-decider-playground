@@ -1,0 +1,41 @@
+{
+  "checkpoint": "<redacted>/strands-decider-12B-gemma4-v2-2610-soup3",
+  "checkpoint_files_sha256_16": "93597323b946ba5e",
+  "jevbench_commit": "1bcc55eb6c8cffde2306b3db03ede39b61c6152a",
+  "tasks_sha256": "771ea8ac252af155606eeb09cad920b32b326c5c2b1e9c9af868be00fe8e2fad",
+  "n_tasks": 231,
+  "hobson_git_rev": "4df6447511058ce3d09e2f1000efc2487f30b733",
+  "hobson_src_dirty_files": "unknown",
+  "hobson_pkg": "<redacted>/strands_decider",
+  "hobson_pkg_py_sha256_16": "153955f3d78b34c8",
+  "gpu_index": "0",
+  "gpu": "NVIDIA H100 80GB HBM3, 595.91.07",
+  "port": 8199,
+  "server_load_s": 15,
+  "jevbench_run_s": 40,
+  "total_wall_s": 57,
+  "n_attempted": 231,
+  "n_failed": 0,
+  "n_correct": 200,
+  "accuracy": 0.8658008658008658,
+  "schema_validity_strict": 1.0,
+  "latency": {
+    "n": 231,
+    "p50_s": 0.1356423499964876,
+    "p95_s": 0.3399347940030566
+  },
+  "tiers": {
+    "easy": [
+      48,
+      48
+    ],
+    "standard": [
+      71,
+      72
+    ],
+    "hard": [
+      81,
+      111
+    ]
+  }
+}

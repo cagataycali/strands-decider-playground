@@ -1,0 +1,226 @@
+{
+ "kind": "baseline",
+ "run_id": "20261010T044945Z-0941+20261010T045041Z-f41d+20261010T045204Z-96e4+20261010T045250Z-f7e8+20261010T045328Z-da2f+20261010T045414Z-600d+20261010T045504Z-426f",
+ "label": "baseline \u00b7 7 single-model runs merged \u00b7 3 Qwen3.5 rows re-captured on flash-linear-attention",
+ "captured_utc": "2026-10-10 07:02Z",
+ "date": "2026-10-10",
+ "space": "cagataydev/strands-decider-playground",
+ "space_sha": "e513d9ff5a1d9c5433ea78a869d766316c1bd902",
+ "hardware": "a100-large",
+ "hardware_detail": "NVIDIA A100-SXM4-80GB (a100-large, 80 GB), bf16",
+ "dtype": "bf16",
+ "models": [
+  "strands-decider-12B-gemma4-v1-2610",
+  "strands-decider-26B-A4B-gemma4-v1-2610",
+  "strands-decider-2B-hobson-v19",
+  "strands-decider-2B-hobson-v21",
+  "strands-decider-2B-qwen3.5-v1-2610",
+  "strands-decider-E2B-gemma4-v1-2610",
+  "strands-decider-E4B-gemma4-v1-2610"
+ ],
+ "n_tasks": 231,
+ "n_cells": 1617,
+ "total": 1617,
+ "wall_s": 322.0,
+ "wall_s_note": "sum of the Space-side wall time of the original 7 runs (04:55Z); the 3 Qwen3.5 rows were re-captured 07:02Z on flash-linear-attention in ~22 s each \u2014 see `recaptured`",
+ "run_ids": [
+  "20261010T044945Z-0941",
+  "20261010T045041Z-f41d",
+  "20261010T045204Z-96e4",
+  "20261010T045250Z-f7e8",
+  "20261010T045328Z-da2f",
+  "20261010T045414Z-600d",
+  "20261010T045504Z-426f"
+ ],
+ "order": "model-major (one run per model); see bench/capture.py",
+ "wall_s_observed_by_client": null,
+ "cancelled": false,
+ "error": null,
+ "dataset": "cagataydev/strands-decider-playground-bench",
+ "dataset_paths": [
+  "runs/20261010T044945Z-0941",
+  "runs/20261010T045041Z-f41d",
+  "runs/20261010T045204Z-96e4",
+  "runs/20261010T045250Z-f7e8",
+  "runs/20261010T045328Z-da2f",
+  "runs/20261010T045414Z-600d",
+  "runs/20261010T045504Z-426f"
+ ],
+ "versions": {
+  "jevbench": "git 1bcc55eb6c8c",
+  "strands-decider": "git 0ac22a97e584",
+  "torch": "2.14.1+cu130",
+  "transformers": "5.19.0",
+  "gradio": "6.30.0"
+ },
+ "per_model": {
+  "strands-decider-12B-gemma4-v1-2610": {
+   "n": 231,
+   "done": 231,
+   "correct": 200,
+   "brier": 0.1982,
+   "strict_valid": 231,
+   "valid": 231,
+   "p50_ms": 136.3,
+   "latency_ms_median": 136.3,
+   "latency_ms_p90": 633.1
+  },
+  "strands-decider-26B-A4B-gemma4-v1-2610": {
+   "n": 231,
+   "done": 231,
+   "correct": 199,
+   "brier": 0.1998,
+   "strict_valid": 231,
+   "valid": 231,
+   "p50_ms": 200.1,
+   "latency_ms_median": 200.3,
+   "latency_ms_p90": 406.8
+  },
+  "strands-decider-2B-hobson-v19": {
+   "n": 231,
+   "done": 231,
+   "correct": 166,
+   "brier": 0.3615,
+   "strict_valid": 231,
+   "valid": 231,
+   "p50_ms": 83.4,
+   "latency_ms_median": 83.4,
+   "latency_ms_p90": 122.1
+  },
+  "strands-decider-2B-hobson-v21": {
+   "n": 231,
+   "done": 231,
+   "correct": 173,
+   "brier": 0.3566,
+   "strict_valid": 231,
+   "valid": 231,
+   "p50_ms": 90.0,
+   "latency_ms_median": 90.0,
+   "latency_ms_p90": 123.9
+  },
+  "strands-decider-2B-qwen3.5-v1-2610": {
+   "n": 231,
+   "done": 231,
+   "correct": 177,
+   "brier": 0.3186,
+   "strict_valid": 231,
+   "valid": 231,
+   "p50_ms": 88.7,
+   "latency_ms_median": 88.7,
+   "latency_ms_p90": 133.9
+  },
+  "strands-decider-E2B-gemma4-v1-2610": {
+   "n": 231,
+   "done": 231,
+   "correct": 178,
+   "brier": 0.3395,
+   "strict_valid": 231,
+   "valid": 231,
+   "p50_ms": 101.1,
+   "latency_ms_median": 101.1,
+   "latency_ms_p90": 249.7
+  },
+  "strands-decider-E4B-gemma4-v1-2610": {
+   "n": 231,
+   "done": 231,
+   "correct": 185,
+   "brier": 0.2624,
+   "strict_valid": 231,
+   "valid": 231,
+   "p50_ms": 116.4,
+   "latency_ms_median": 116.4,
+   "latency_ms_p90": 306.8
+  }
+ },
+ "how": "python -m bench.capture run \u2014 every cell computed on the Space through answer(), scored with JevBench's score_task",
+ "space_sha_mirror_main": "4a81573",
+ "recaptured": {
+  "date": "2026-10-10",
+  "models": [
+   "strands-decider-2B-qwen3.5-v1-2610",
+   "strands-decider-2B-hobson-v19",
+   "strands-decider-2B-hobson-v21"
+  ],
+  "run_ids": {
+   "strands-decider-2B-qwen3.5-v1-2610": "20261010T065743Z-7333",
+   "strands-decider-2B-hobson-v19": "20261010T070128Z-a0b2",
+   "strands-decider-2B-hobson-v21": "20261010T070203Z-4c46"
+  },
+  "why": "flash-linear-attention 0.5.2 installed on the Space; the 3 Qwen3.5-based models take its chunk_gated_delta_rule kernel instead of the reference PyTorch path",
+  "space_sha": "d321f9c92618b1891adf171c8433ceb6762add35",
+  "diff_vs_previous": {
+   "strands-decider-2B-qwen3.5-v1-2610": {
+    "correct_before": 177,
+    "correct_after": 177,
+    "predicted_changed": [],
+    "p_gold_absdiff_median": 0.0013,
+    "p_gold_absdiff_max": 0.0262,
+    "latency_med_before": 98.4,
+    "latency_med_after": 88.7,
+    "latency_p90_before": 282.3,
+    "latency_p90_after": 133.9
+   },
+   "strands-decider-2B-hobson-v19": {
+    "correct_before": 166,
+    "correct_after": 166,
+    "predicted_changed": [
+     "hard-opus-c-temporal_numeric-08"
+    ],
+    "p_gold_absdiff_median": 0.0016,
+    "p_gold_absdiff_max": 0.0158,
+    "latency_med_before": 97.0,
+    "latency_med_after": 83.4,
+    "latency_p90_before": 281.1,
+    "latency_p90_after": 122.1
+   },
+   "strands-decider-2B-hobson-v21": {
+    "correct_before": 171,
+    "correct_after": 173,
+    "predicted_changed": [
+     "hard-sol-b-judge_hard-18",
+     "hard-opus-b-tradeoff-06"
+    ],
+    "p_gold_absdiff_median": 0.0015,
+    "p_gold_absdiff_max": 0.0317,
+    "latency_med_before": 95.6,
+    "latency_med_after": 90.0,
+    "latency_p90_before": 280.3,
+    "latency_p90_after": 123.9
+   }
+  },
+  "flips": [
+   {
+    "task": "hard-sol-b-judge_hard-18",
+    "before": false,
+    "after": true,
+    "pred_before": "yes",
+    "pred_after": "no",
+    "expected": "no",
+    "p_gold_before": 0.4922,
+    "p_gold_after": 0.5239
+   },
+   {
+    "task": "hard-opus-b-tradeoff-06",
+    "before": false,
+    "after": true,
+    "pred_before": "no",
+    "pred_after": "yes",
+    "expected": "yes",
+    "p_gold_before": 0.4889,
+    "p_gold_after": 0.5006
+   }
+  ]
+ },
+ "kernels": {
+  "flash-linear-attention": "0.5.2",
+  "fla-core": "0.5.2",
+  "causal-conv1d": null,
+  "attn_implementation": "sdpa (transformers default)",
+  "applies_to": [
+   "strands-decider-2B-qwen3.5-v1-2610",
+   "strands-decider-2B-hobson-v19",
+   "strands-decider-2B-hobson-v21"
+  ],
+  "note": "Gemma 4 models have no gated-delta-net layers; their rows are the original 2026-10-10 04:55Z capture on the same image minus fla"
+ }
+}
