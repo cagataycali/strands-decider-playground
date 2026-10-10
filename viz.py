@@ -292,12 +292,12 @@ def _consensus_vote(rows, answered, qid, qtype, lora):
 
 
 def _consensus_score(rows, answered, qid, lora):
-    W, H = 720, 372
+    W, H = 720, 392
     pad = 24
     levels = _options([a for _, a in rows], "score") or ["—"]
     L = len(levels)
     N = len(answered)
-    y_axis = 166
+    y_axis = 186
     y_nodes = H - 64
     y_head = 16
     head_h = 92
@@ -336,8 +336,7 @@ def _consensus_score(rows, answered, qid, lora):
                    f'<text class="viz-num" x="{x0 + w - 10:.1f}" y="{y_head + 43}" text-anchor="end">{_count(mass[o], 2)}'
                    f'<tspan class="mute"> / {N}</tspan></text></g>')
     # ordered axis
-    out.append(f'<rect class="viz-group" x="{pad}" y="{y_head + head_h - 10}" width="{W - 2 * pad}" height="{y_axis - y_head - head_h + 86}" rx="8"/>')
-    out.append(f'<text class="viz-lab mute" x="{pad + 8}" y="{y_head + head_h + 4}">expected value per model · bubble radius = confidence</text>')
+    out.append(f'<rect class="viz-group" x="{pad}" y="{y_head + head_h - 10}" width="{W - 2 * pad}" height="{y_axis - y_head - head_h + 88}" rx="8"/>')
     out.append(f'<line class="viz-axis" x1="{ax0}" y1="{y_axis + 48}" x2="{ax1}" y2="{y_axis + 48}"/>')
     for k, o in enumerate(levels):
         x = xof(k)
@@ -347,27 +346,32 @@ def _consensus_score(rows, answered, qid, lora):
     if mean_ev is not None:
         mx = xof(mean_ev)
         out.append(f'<g class="viz-mean" data-viz="mark">{_title(f"mean expected value across {N} models = {mean_ev:.4f}")}'
-                   f'<line x1="{mx:.1f}" y1="{y_axis - 84}" x2="{mx:.1f}" y2="{y_axis + 48}"/>'
-                   f'<text class="viz-num acc" x="{mx + 6:.1f}" y="{y_axis + 36}">mean {_count(mean_ev, 4)}</text></g>')
+                   f'<line x1="{mx:.1f}" y1="{y_axis - 100}" x2="{mx:.1f}" y2="{y_axis + 48}"/>'
+                   f'<text class="viz-num acc" x="{mx + 6:.1f}" y="{y_axis + 42}">mean {_count(mean_ev, 4)}</text></g>')
 
     xs, nodes = _node_row(rows, lora, W, y_nodes, pad)
     bubbles = []
     order = 0
-    placed: list[tuple[float, float, float]] = []  # (x, y, r) -- stack upward when two land together
+    placed: list[tuple[float, float, float]] = []  # (x, y, r)
     for i, (c, a) in enumerate(rows):
         if a is None or not isinstance(a.get("value"), (int, float)):
             continue
         ev = float(a["value"])
         r = _radius(_conf(a))
-        lx = xof(ev)
-        ly = y_axis
-        for dy in (0, -34, -68, 34):
-            ly = y_axis + dy
-            if not any((lx - px) ** 2 + (ly - py) ** 2 < (r + pr + 2) ** 2 for px, py, pr in placed):
+        tx = xof(ev)                      # the TRUE expected value on the axis
+        lx, ly = tx, y_axis
+        # beeswarm: keep x when possible; when models cluster, step up, then sideways, and draw
+        # a stem from the bubble to its exact position on the axis so nothing is misread.
+        for dx, dy in ((0, 0), (0, -32), (30, 0), (-30, 0), (30, -32), (-30, -32), (0, -64), (30, -64), (-30, -64),
+                       (60, 0), (-60, 0), (60, -32), (-60, -32), (60, -64), (-60, -64)):
+            lx, ly = tx + dx, y_axis + dy
+            if ax0 - 10 <= lx <= ax1 + 10 and not any((lx - px) ** 2 + (ly - py) ** 2 < (r + pr + 3) ** 2 for px, py, pr in placed):
                 break
         placed.append((lx, ly, r))
         x0 = xs[i]
         out.append(f'<line class="viz-trackline" x1="{x0:.1f}" y1="{y_nodes - 10}" x2="{lx:.1f}" y2="{ly + r:.1f}"/>')
+        out.append(f'<line class="viz-stem" x1="{lx:.1f}" y1="{ly + r:.1f}" x2="{tx:.1f}" y2="{y_axis + 48}"/>'
+                   f'<line class="viz-stem tick" x1="{tx:.1f}" y1="{y_axis + 44}" x2="{tx:.1f}" y2="{y_axis + 52}"/>')
         tip = (f"{c.get('name')}\nexpected value = {ev:.4f}\nconfidence = {_f(a.get('confidence'))}\n"
                + " · ".join(f"p({o}) = {_f((a.get('probs') or {}).get(o))}" for o in levels))
         bubbles.append(
@@ -382,7 +386,8 @@ def _consensus_score(rows, answered, qid, lora):
     if N == 0:
         cap = "No model answered this question, so there is no expected value to place."
     else:
-        cap = (f"{N} model{'s' if N != 1 else ''} · mean expected value {mean_ev:.4f} on levels 0…{L - 1} · "
+        cap = (f"{N} model{'s' if N != 1 else ''}: each bubble sits at that model's expected value (radius = confidence; "
+               f"a stem marks the exact value when bubbles are moved apart) · mean {mean_ev:.4f} on levels 0…{L - 1} · "
                f"most probability mass on {top} (Σp = {mass[top]:.2f} of {N}).")
     return _figure("consensus", f"{qid} · expected value", out, cap)
 
@@ -451,8 +456,8 @@ def multiples_html(result: dict, qid: str, lora: dict[str, Any] | None = None) -
 def scatter_svg(result: dict, qid: str, lora: dict[str, Any] | None = None) -> str:
     rows = _answers(result, qid)
     qtype = next((a.get("type") for _, a in rows if a), None) or "choice"
-    W, H = 720, 300
-    pl, pr, pt, pb = 64, 24, 20, 48
+    W, H = 720, 310
+    pl, pr, pt, pb = 64, 24, 30, 48
     pw, ph = W - pl - pr, H - pt - pb
     pts = []
     for c, a in rows:
@@ -490,36 +495,29 @@ def scatter_svg(result: dict, qid: str, lora: dict[str, Any] | None = None) -> s
     yr = yof(CONF_REF)
     out.append(f'<g class="viz-ref" data-viz="mark">{_title(CONF_REF_LABEL)}'
                f'<line x1="{pl}" y1="{yr:.1f}" x2="{W - pr}" y2="{yr:.1f}"/>'
-               f'<text class="viz-lab acc" x="{W - pr - 4}" y="{yr + 13:.1f}" text-anchor="end">{E(CONF_REF_LABEL)}</text></g>')
-    # points + labels with a simple collision nudge (the reference label counts as placed)
-    placed: list[tuple[float, float]] = [(W - pr - 4 - k, yr + 9) for k in (40, 180, 320, 420)]
-    dots = [(xof(ap), yof(conf)) for _c, _a, ap, conf in pts]
+               f'<line x1="{W - pr - 24}" y1="12" x2="{W - pr}" y2="12"/>'
+               f'<text class="viz-lab acc" x="{W - pr - 30}" y="16" text-anchor="end">{E(CONF_REF_LABEL)}</text></g>')
+    # points carry their node NUMBER only (full labels live in the legend below), nudged apart
+    # vertically when two models share a spot -- the three Qwen3.5-2B deciders have one x.
+    placed: list[tuple[float, float]] = []
     for i, (c, a, ap, conf) in enumerate(pts):
         x, y = xof(ap), yof(conf)
-        lab = model_label(c, lora)
-        ly = y + 4
-        lx = x + 12
-        wlab = 6.6 * (len(lab) + 4)
+        idx = next(j for j, (cc, _a) in enumerate(rows) if cc is c) + 1
+        lx, ly = x + 9, y + 4
         for _ in range(10):
-            hit_lab = any(abs(lx - px) < 150 and abs(ly - py) < 12 for px, py in placed)
-            hit_dot = any(lx - 8 < qx < lx + wlab and abs(ly - 4 - qy) < 11 and (qx, qy) != (x, y) for qx, qy in dots)
-            if hit_lab or hit_dot:
-                ly += 13
+            if any(abs(lx - px) < 16 and abs(ly - py) < 11 for px, py in placed):
+                ly += 11
             else:
                 break
-        if lx + 7 * len(lab) > W - pr:
-            lx = x - 12
-            anchor = "end"
-        else:
-            anchor = "start"
         placed.append((lx, ly))
-        idx = next(j for j, (cc, _a) in enumerate(rows) if cc is c) + 1
-        tip = (f"#{idx} {c.get('name')}\nactive params = {ap:,.0f}\n{ylab} = {conf:.4f}\nargmax = {a.get('vote')}")
+        tip = (f"#{idx} {c.get('name')} · {model_label(c, lora)}\nactive params = {ap:,.0f}\n{ylab} = {conf:.4f}\nargmax = {a.get('vote')}")
         out.append(f'<g class="viz-point" data-viz="point" data-delay="{i * 60}" style="--x:{x:.1f}px;--y:{y:.1f}px">{_title(tip)}'
-                   f'<circle r="5"/><text class="viz-lab" x="{lx - x:.1f}" y="{ly - y:.1f}" text-anchor="{anchor}">{idx} · {E(lab)}</text></g>')
+                   f'<circle r="5"/><text class="viz-lab" x="{lx - x:.1f}" y="{ly - y:.1f}">{idx}</text></g>')
     if not pts:
         out.append(f'<text class="viz-lab mute" x="{pl + pw / 2:.1f}" y="{pt + ph / 2:.1f}" text-anchor="middle">no (active params, {ylab}) pair to plot</text>')
     out.append("</svg>")
+    legend = " · ".join(f'<b>{j + 1}</b> {E(model_label(c, lora))}' for j, (c, _a) in enumerate(rows))
+    out.append(f'<p class="viz-legend">{legend}</p>')
     cap = (f"{len(pts)} point{'s' if len(pts) != 1 else ''}: {ylab} against active parameters; the dashed line is the one "
            f"calibration figure the strands-decider README publishes (evaluation/results.md)"
            + (" · noul answers carry no confidence field, so y is P(argmax)." if qtype == "noul" else "."))
@@ -590,7 +588,7 @@ def _figure(kind: str, title: str, body: list[str], caption: str) -> str:
             + f'<p class="viz-cap">{E(caption)}</p></figure>')
 
 
-def render(result: dict, lora: dict[str, Any] | None = None, *, heading: bool = True) -> str:
+def render(result: dict, lora: dict[str, Any] | None = None, *, heading: bool = False) -> str:
     """Every diagram for every question in `result`. Empty string when there is nothing to draw."""
     if not isinstance(result, dict) or result.get("error") or not result.get("cards"):
         return ""
@@ -608,7 +606,10 @@ def render(result: dict, lora: dict[str, Any] | None = None, *, heading: bool = 
                  scatter_svg(result, qid, lora), agreement_svg(result, qid, lora)]
         parts = [p for p in parts if p]
         if parts:
-            spec = next((s for s in (result.get("question_specs") or []) if (s.get("id") or "") == qid), None)
+            specs = list(result.get("question_specs") or [])
+            spec = next((s for s in specs if (s.get("id") or "") == qid), None)
+            if spec is None and len(specs) == len(qids):  # specs without ids: positional (runner.build_questions order)
+                spec = specs[qids.index(qid)]
             instr = (spec or {}).get("instructions") or ""
             blocks.append(f'<section class="viz-q" data-qid="{E(qid)}">'
                           f'<h3 class="viz-qh"><span class="mono">{E(qid)}</span>'
@@ -711,19 +712,47 @@ def demo_lora() -> dict[str, int]:
     return {name: r for name, _b, _a, r in PUBLIC_MODELS}
 
 
-def demo_results(golden: dict | None) -> list[tuple[str, dict]]:
+def merge_results(results: list[dict]) -> dict | None:
+    """Several answer() dicts (one question each, same models) -> one dict with every question.
+    Cards are matched by name; the first result's card order wins. Used for DEPLOY's live captures."""
+    results = [r for r in results if isinstance(r, dict) and r.get("cards")]
+    if not results:
+        return None
+    base = results[0]
+    cards = {c["name"]: {**c, "answers": dict(c.get("answers") or {})} for c in base["cards"]}
+    qids = list(base.get("question_ids") or [])
+    specs = list(base.get("question_specs") or [])
+    for r in results[1:]:
+        rq = list(r.get("question_ids") or [])
+        rs = list(r.get("question_specs") or [])
+        qids += [q for q in rq if q not in qids]
+        specs += [{**sp, "id": sp.get("id") or (rq[i] if i < len(rq) else "")} for i, sp in enumerate(rs)]
+        for c in r["cards"]:
+            if c["name"] in cards:
+                cards[c["name"]]["answers"].update(c.get("answers") or {})
+    for i, sp in enumerate(specs):
+        if not sp.get("id") and i < len(qids):
+            sp["id"] = qids[i]
+    return {**base, "cards": list(cards.values()), "question_ids": qids, "question_specs": specs}
+
+
+def demo_results(golden: dict | None, live: list[dict] | None = None) -> list[tuple[str, dict]]:
     out = []
     if golden:
         out.append(("golden — the REAL result of lanes/APP/golden.json (1 model, CPU fp32)", golden_result(golden)))
-    out.append(("synthetic — 7 public models, INVENTED numbers for layout only (not a measurement)", synthetic_result()))
+    merged = merge_results(live or [])
+    if merged:
+        out.append((f"live — REAL answers of all {len(merged['cards'])} public models captured from the Space "
+                    f"on {merged.get('device', '?')} (lanes/DEPLOY/all7_*.json)", merged))
+    out.append(("synthetic — 7 public models + one failed card, INVENTED numbers for layout only (not a measurement)", synthetic_result()))
     return out
 
 
-def demo_page(golden: dict | None, static_dir: str = "../../space/static") -> str:
-    """Standalone HTML: tokens.css + app.css (shell) + viz.css/js + app.js (counter)."""
+def demo_page(golden: dict | None, static_dir: str = "../../space/static", live: list[dict] | None = None) -> str:
+    """Standalone HTML: tokens.css + viz.css/js + app.js (the shared counter)."""
     lora = demo_lora()
     sections = []
-    for title, res in demo_results(golden):
+    for title, res in demo_results(golden, live):
         sections.append(f'<section class="viz-demo-block"><h2 class="viz-demo-h">{E(title)}</h2>{render(res, lora, heading=False)}</section>')
     s = static_dir.rstrip("/")
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
@@ -751,7 +780,14 @@ def _main(argv: list[str]) -> int:  # pragma: no cover -- CLI only
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lanes", "APP", "golden.json")
     static = argv[argv.index("--static") + 1] if "--static" in argv else "../../space/static"
     golden = json.load(open(golden_path)) if os.path.exists(golden_path) else None
-    sys.stdout.write(demo_page(golden, static))
+    live = []
+    dep = os.path.join(os.path.dirname(golden_path), "..", "DEPLOY")
+    for fn in ("all7_noul.json", "all7_choice.json", "all7_score.json"):
+        fp = os.path.join(dep, fn)
+        if os.path.exists(fp):
+            raw = json.load(open(fp))
+            live.append(raw.get("raw") if isinstance(raw, dict) and "raw" in raw else raw)
+    sys.stdout.write(demo_page(golden, static, live))
     return 0
 
 

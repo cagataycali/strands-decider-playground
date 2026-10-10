@@ -133,65 +133,65 @@ def figure_svg() -> str:
     """The architecture from the README, drawn to the strands rules: 1px strokes, rx 8, dashed
     cluster, accent only on the signal. The pointer comparison sweeps <answer> -> each option's
     last token on a 1.2 s loop (CSS keyframes; paused on hover; static under reduced motion)."""
-    # column x positions
-    xs = {"in": 22, "torso": 150, "hid": 300, "soft": 392, "out": 470}
-    opts = [("billing", 92), ("sales", 150), ("retail", 208)]
+    xs = {"in": 20, "torso": 146, "hid": 292, "soft": 400, "out": 474}
+    opts = ["billing", "sales", "retail"]
     g = []
-    g.append('<svg class="ld-fig" viewBox="0 0 560 320" role="img" aria-labelledby="ld-fig-t ld-fig-d">')
+    g.append('<svg class="ld-fig" viewBox="0 0 560 318" role="img" aria-labelledby="ld-fig-t ld-fig-d">')
     g.append('<title id="ld-fig-t">Strands decider architecture</title>')
     g.append('<desc id="ld-fig-d">State, question and options enter a decoder torso whose language-modelling head was '
              'discarded. A pointer head compares the hidden state at the answer position against the hidden state at '
              'each option\'s last token. One masked softmax is read back three ways: noul, choice, score.</desc>')
-    # inputs
-    g.append(f'<g class="ld-f-in" transform="translate({xs["in"]} 56)">')
+    # request
+    g.append(f'<g transform="translate({xs["in"]} 56)">')
     for i, (lab, cls) in enumerate([("state", ""), ("question", ""), ("billing", "opt"), ("sales", "opt"), ("retail", "opt")]):
         y = i * 38
         g.append(f'<rect x="0" y="{y}" width="96" height="26" rx="8" class="box {cls}"/>'
-                 f'<text x="48" y="{y + 17}" class="lab mono">{lab}</text>')
-        g.append(f'<path d="M96 {y + 13} H{xs["torso"] - xs["in"] - 2}" class="edge"/>')
+                 f'<text x="48" y="{y + 17}" class="lab">{lab}</text>'
+                 f'<path d="M96 {y + 13} H{xs["torso"] - xs["in"] - 2}" class="edge"/>')
     g.append('<text x="48" y="-12" class="cap">request</text></g>')
     # torso cluster
     tx, ty, tw, th = xs["torso"], 40, 118, 220
     g.append(f'<g transform="translate({tx} {ty})"><rect x="0" y="0" width="{tw}" height="{th}" rx="8" class="cluster"/>'
              f'<text x="{tw / 2}" y="-12" class="cap">decoder torso</text>'
-             f'<text x="{tw / 2}" y="{th + 18}" class="cap muted">LM head discarded · LoRA on the torso</text>')
-    for j in range(6):
-        g.append(f'<rect x="12" y="{14 + j * 32}" width="{tw - 24}" height="20" rx="8" class="box layer"/>')
-    g.append(f'<text x="{tw / 2}" y="{th / 2 + 4}" class="lab mono layerlab">transformer blocks</text></g>')
-    # hidden states column
+             f'<text x="{tw / 2}" y="{th + 18}" class="cap muted">LM head discarded · LoRA r on the torso</text>')
+    for j in range(5):
+        g.append(f'<rect x="12" y="{14 + j * 34}" width="{tw - 24}" height="20" rx="8" class="box layer"/>')
+    g.append(f'<text x="{tw / 2}" y="{th - 16}" class="lab layerlab">transformer blocks</text></g>')
+    # last hidden states: options in a column, <answer> to their upper right, pointer taps each from above
     hx = xs["hid"]
-    g.append(f'<g transform="translate({hx} 0)"><text x="26" y="44" class="cap">last hidden state</text>')
-    ay = 60  # <answer>
-    g.append(f'<path d="M{tx + tw - hx} {ty + th / 2} C {-30} {ty + th / 2}, {-30} {ay + 11}, 0 {ay + 11}" class="edge"/>')
-    g.append(f'<rect x="0" y="{ay}" width="52" height="22" rx="8" class="box answer"/><text x="26" y="{ay + 15}" class="lab mono answerlab">&lt;answer&gt;</text>')
-    for k, (lab, _) in enumerate(opts):
-        oy = 128 + k * 50
-        g.append(f'<path d="M{tx + tw - hx} {ty + th / 2} C {-30} {ty + th / 2}, {-30} {oy + 11}, 0 {oy + 11}" class="edge"/>')
+    ax, ay, aw = 58, 58, 60
+    g.append(f'<g transform="translate({hx} 0)"><text x="{(ax + aw) / 2}" y="44" class="cap">last hidden state</text>')
+    g.append(f'<path d="M{tx + tw - hx} {ty + th / 2} C {-26} {ty + th / 2}, {ax - 40} {ay + 11}, {ax} {ay + 11}" class="edge"/>')
+    g.append(f'<rect x="{ax}" y="{ay}" width="{aw}" height="22" rx="8" class="box answer"/>'
+             f'<text x="{ax + aw / 2}" y="{ay + 15}" class="lab answerlab">&lt;answer&gt;</text>')
+    for k, lab in enumerate(opts):
+        oy = 122 + k * 52
+        g.append(f'<path d="M{tx + tw - hx} {ty + th / 2} C {-26} {ty + th / 2}, {-26} {oy + 11}, 0 {oy + 11}" class="edge"/>')
         g.append(f'<rect x="0" y="{oy}" width="52" height="22" rx="8" class="box opt o{k}"/>'
-                 f'<text x="26" y="{oy + 15}" class="lab mono">{lab}</text>'
+                 f'<text x="26" y="{oy + 15}" class="lab">{lab}</text>'
                  f'<text x="26" y="{oy + 34}" class="cap muted tiny">last token</text>')
-        # pointer comparison: a 1px line from <answer> to this option, drawn in its third of the loop
-        g.append(f'<line x1="26" y1="{ay + 22}" x2="26" y2="{oy}" class="ptr p{k}" pathLength="100"/>')
-        g.append(f'<text x="34" y="{oy - 6}" class="cap score s{k}">dot · score</text>')
-    g.append('<text x="26" y="300" class="cap">pointer head · ~1M params · fp32</text></g>')
+        # pointer comparison: 1px accent line from the answer state down to this option's box
+        g.append(f'<path d="M{ax + aw / 2 - 10} {ay + 22} C {ax + aw / 2 - 10} {oy - 30}, 44 {oy - 30}, 44 {oy}" class="ptr p{k}" pathLength="100"/>')
+        g.append(f'<text x="50" y="{oy - 5}" class="cap score s{k}">dot</text>')
+    g.append(f'<text x="{(ax + aw) / 2}" y="298" class="cap">pointer head · ~1M params · fp32</text></g>')
     # softmax
     sx = xs["soft"]
-    g.append(f'<g transform="translate({sx} 0)"><rect x="0" y="118" width="58" height="92" rx="8" class="box soft"/>'
-             '<text x="29" y="150" class="lab mono">one</text><text x="29" y="166" class="lab mono">masked</text>'
-             '<text x="29" y="182" class="lab mono">softmax</text>')
+    g.append(f'<g transform="translate({sx} 0)"><rect x="0" y="118" width="54" height="92" rx="8" class="box soft"/>'
+             '<text x="27" y="150" class="lab">one</text><text x="27" y="166" class="lab">masked</text>'
+             '<text x="27" y="182" class="lab">softmax</text>')
     for k in range(3):
-        oy = 128 + k * 50 + 11
+        oy = 122 + k * 52 + 11
         g.append(f'<path d="M{hx + 52 - sx} {oy} H0" class="edge sig"/>')
     g.append("</g>")
     # readouts
     ox = xs["out"]
-    g.append(f'<g transform="translate({ox} 0)"><text x="36" y="44" class="cap">read back</text>')
+    g.append(f'<g transform="translate({ox} 0)"><text x="39" y="44" class="cap">read back</text>')
     outs = [("noul", "P(yes) 0.86", 92), ("choice", "billing · 0.66", 150), ("score", "E[level] 1.03", 208)]
-    for k, (lab, val, oy) in enumerate(outs):
-        g.append(f'<path d="M{sx + 58 - ox} {164} C -14 164, -14 {oy + 11}, 0 {oy + 11}" class="edge"/>')
-        g.append(f'<rect x="0" y="{oy - 4}" width="78" height="30" rx="8" class="box out"/>'
-                 f'<text x="39" y="{oy + 8}" class="lab mono">{lab}</text>'
-                 f'<text x="39" y="{oy + 20}" class="cap accent">{val}</text>')
+    for lab, val, oy in outs:
+        g.append(f'<path d="M{sx + 54 - ox} 164 C -14 164, -14 {oy + 11}, 0 {oy + 11}" class="edge"/>')
+        g.append(f'<rect x="0" y="{oy - 4}" width="80" height="30" rx="8" class="box out"/>'
+                 f'<text x="40" y="{oy + 8}" class="lab">{lab}</text>'
+                 f'<text x="40" y="{oy + 20}" class="cap accent">{val}</text>')
     g.append("</g></svg>")
     return "".join(g)
 
@@ -307,11 +307,11 @@ def models_html(registry: list[Any]) -> str:
         vision = bool(getattr(info, "vision", False))
         tag = '<span class="ld-tag on">vision · reads images</span>' if vision else '<span class="ld-tag">text only</span>'
         cards.append(
-            f'<a class="ld-model" href="https://huggingface.co/{E(repo)}" target="_blank" rel="noopener">'
+            '<div class="ld-model">'
             f'<span class="ld-model__base">{E(model_label(info))}</span>'
-            f'<span class="ld-model__name mono">{E(name)}</span>'
+            f'<a class="ld-model__name mono" href="https://huggingface.co/{E(repo)}" target="_blank" rel="noopener" title="{E(repo)} on Hugging Face">{E(name)} ↗</a>'
             f'<span class="ld-model__row">{_eval_badges(info)}</span>'
-            f'<span class="ld-model__row">{tag}</span></a>'
+            f'<span class="ld-model__row">{tag}</span></div>'
         )
     n = len(registry)
     return (
@@ -392,7 +392,7 @@ def _demo_registry() -> list[Any]:
     return [
         _Demo("strands-decider-2B-hobson-v19", "Qwen/Qwen3.5-2B-Base", True, 16),
         _Demo("strands-decider-2B-hobson-v21", "Qwen/Qwen3.5-2B-Base", True, 16),
-        _Demo("strands-decider-2B-qwen3.5-v1-2610", "Qwen/Qwen3.5-2B-Base", True, 16),
+        _Demo("strands-decider-2B-qwen3.5-v1-2610", "Qwen/Qwen3.5-2B-Base", True, 48),
         _Demo("strands-decider-E2B-gemma4-v1-2610", "google/gemma-4-E2B-it", False, 48),
         _Demo("strands-decider-E4B-gemma4-v1-2610", "google/gemma-4-E4B-it", False, 48),
         _Demo("strands-decider-12B-gemma4-v1-2610", "google/gemma-4-12B-it", False, 48),
@@ -403,11 +403,11 @@ def _demo_registry() -> list[Any]:
 def demo_page(dark: bool = False) -> str:
     reg = _demo_registry()
     n = len(reg)
-    body = (hero_html(n) + proof_html(n)
-            + '<div class="gradio-container"><div id="sdp-ask" class="ld-demo-ask"><label>State — what is being decided about'
+    body = ('<div class="gradio-container">' + hero_html(n) + proof_html(n)
+            + '<div id="sdp-ask" class="ld-demo-ask"><label>State — what is being decided about'
               '<textarea rows="3" placeholder="the ask bar of the running app sits here"></textarea></label></div>'
-              '<div id="sdp-examples" class="ld-demo-ask"><em>examples region (LANE EXAMPLES)</em></div></div>'
-            + howto_html() + models_html(reg) + footer_html())
+              '<div id="sdp-examples" class="ld-demo-ask"><em>examples region (LANE EXAMPLES)</em></div>'
+            + howto_html() + models_html(reg) + footer_html() + '</div>')
     return (f'<!doctype html><html class="{"dark" if dark else ""}" lang="en"><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width, initial-scale=1">'
             '<title>Strands Decider Playground — landing preview</title>'

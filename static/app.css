@@ -386,7 +386,7 @@ body, .gradio-container, gradio-app {
 .sdp-card .title .base .r { white-space: nowrap; font-weight: var(--w-medium); color: var(--muted); }
 .sdp-card.skel .sk { display: block; min-height: 8px; }
 /* option labels inside radio/checkbox groups are values, not captions: no uppercase */
-.gradio-container .wrap label > span { text-transform: none !important; letter-spacing: 0 !important; font-size: 0.68rem !important; color: inherit !important; font-weight: var(--w-medium) !important; }
+.gradio-container fieldset .wrap label > span { text-transform: none !important; letter-spacing: 0 !important; font-size: 0.68rem !important; color: inherit !important; font-weight: var(--w-medium) !important; }
 .gradio-container .wrap label { color: var(--fg) !important; }
 .sdp-strip .srow, .sdp-strip .heads { grid-template-columns: 240px 1fr auto; }
 .sdp-strip .cell .muted { color: var(--muted); margin-left: 0.3em; }
@@ -400,3 +400,4 @@ body, .gradio-container, gradio-app {
 .gradio-container fieldset .wrap label > span { text-transform: none !important; letter-spacing: 0 !important; font-size: 0.68rem !important; color: inherit !important; }
 .gradio-container [data-testid="status-tracker"], .gradio-container .wrap.generating, .gradio-container .wrap.pending { background: transparent !important; border: 0 !important; }
 .gradio-container .accordion button, .gradio-container button.label-wrap, .gradio-container .label-wrap button { background: transparent !important; border: 0 !important; border-radius: 0 !important; padding-left: 0 !important; }
+.gradio-container label.container > span, .gradio-container .block > label > span { font-family: var(--sr-mono) !important; font-size: var(--fs-caption) !important; letter-spacing: var(--tracking-caption); text-transform: uppercase; color: var(--muted) !important; }

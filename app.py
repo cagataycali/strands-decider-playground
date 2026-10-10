@@ -181,6 +181,17 @@ import transformers  # noqa: E402
 
 from registry import HIDDEN_PRIVATE, PUBLIC_ONLY  # noqa: E402
 
+# Lane modules (INTEGRATION RULE in BRIEF.md): each lane owns ONLY the lines inside its region.
+# --- LANE LANDING ---
+import landing  # noqa: E402  (space/landing.py + static/landing.*)
+# --- /LANE LANDING ---
+# --- LANE EXAMPLES ---
+import examples as EX  # noqa: E402  (space/examples.py + static/examples.*)
+# --- /LANE EXAMPLES ---
+# --- LANE VIZ ---
+import viz  # noqa: E402  (space/viz.py + static/viz.*)
+# --- /LANE VIZ ---
+
 STATIC = Path(__file__).parent / "static"
 
 
@@ -617,15 +628,11 @@ def header_html() -> str:
     return (
         '<div class="sdp"><header class="sdp-header">' + MARK_SVG
         + '<a href="https://strandsagents.com" target="_blank" rel="noopener" title="strandsagents.com">' + WORDMARK_SVG + "</a>"
-        '<span class="project">/decider-playground</span><span class="tag" style="margin-left:auto">public checkpoints only</span></header>'
-        '<div class="sdp-hero"><h1 class="title">One question. <em>Every decider.</em></h1>'
-        '<p class="lede">Ask once; every public Strands decider answers side by side, with a probability for each option, '
-        'a calibrated confidence, and the measured cost of the call.</p>'
-        '<p>A decider is a small post-tuned language model that answers a typed question about a piece of state — '
-        'yes/no, pick one, or rate on a rubric — with a probability for every option instead of free text. '
-        'Each card also shows what the call needed on top of the weights, latency with load time kept separate, '
-        'estimated FLOPs, and the model\'s own published evals.</p>'
-        f'<p class="count">{count}</p></div></div>'
+        '<span class="project">/decider-playground</span><span class="tag" style="margin-left:auto">public checkpoints only</span></header></div>'
+        # --- LANE LANDING ---  (hero REPLACES DESIGN's .sdp-hero text block, per LANDING 02:19Z; header row above is kept.
+        #                        `count` = "N public models read live … Enter runs · Esc clears" is available to reuse.)
+        + landing.hero_html(n)
+        # --- /LANE LANDING ---
     )
 
 
@@ -661,6 +668,19 @@ def _css_with_fonts() -> str:
 
 CSS = _css_with_fonts()
 JS = _static("app.js")
+# Loader hooks: gr.HTML cannot run <script>, so every lane's CSS/JS rides launch(css=CSS, js=JS). One line per lane.
+# --- LANE LANDING ---
+CSS += "\n" + landing.LANDING_CSS
+JS += "\n" + landing.LANDING_JS
+# --- /LANE LANDING ---
+# --- LANE EXAMPLES ---
+CSS += "\n" + EX.css()
+JS += "\n" + EX.js()
+# --- /LANE EXAMPLES ---
+# --- LANE VIZ ---
+CSS += "\n" + _static("viz.css")
+JS += "\n" + _static("viz.js")
+# --- /LANE VIZ ---
 
 GOLDEN_Q = [("noul", "Does this convey urgency?", []),
             ("choice", "Which team should handle this?", ["billing", "sales", "retail"]),
@@ -733,6 +753,12 @@ def build_ui() -> gr.Blocks:
                 clear = gr.Button("Clear", elem_id="sdp-clear", scale=1)
                 unload = gr.Button("Unload models", scale=1)
 
+        # --- LANE EXAMPLES ---
+        gr.HTML(EX.gallery_html(), elem_classes=["sdp-plain"], elem_id="sdx-gallery-host")
+        ex_pick = gr.Textbox(value="", visible=True, elem_id="sdx-pick", container=False, show_label=False,
+                             elem_classes=["sdx-hidden"])  # 1x1 px via CSS; JS writes "<example-id>#<nonce>" here
+
+
         status = gr.HTML(status_html("", "Ready."), elem_classes=["sdp-plain"])
         gr.HTML('<div class="sdp sdp-section"><h2>Comparison</h2><span class="sub">argmax per model and the full distribution per option</span></div>',
                 elem_classes=["sdp-plain"])
@@ -740,9 +766,17 @@ def build_ui() -> gr.Blocks:
         gr.HTML('<div class="sdp sdp-section"><h2>Models</h2><span class="sub">labelled by base and LoRA rank — the digits in a repo name are not a size</span></div>',
                 elem_classes=["sdp-plain"])
         cards = gr.HTML(grid_html([], REGISTRY, [], [], None).replace("queued", "idle"), elem_classes=["sdp-plain"])
+        # --- LANE VIZ ---  (animated SVG decision diagrams; re-rendered from the result dict via raw.change below)
+        gr.HTML('<div class="sdp sdp-section" id="sdp-viz-head"><h2>Decisions</h2><span class="sub">every decider on one diagram — same choice, different certainty</span></div>',
+                elem_classes=["sdp-plain"])
+        viz_out = gr.HTML("", elem_classes=["sdp-plain"], elem_id="sdp-viz")
+        # --- /LANE VIZ ---
         with gr.Accordion("Raw result — every number on this page comes from here", open=False):
             raw = gr.JSON(value=None)
+        # --- LANE LANDING ---  (how-to-use / install CTA + footer; replace footer_html() with yours if you own the footer —
+        #                        exactly ONE footer on the page, keep data-public-count=N on it)
         gr.HTML(footer_html(), elem_classes=["sdp-plain"])
+        # --- /LANE LANDING ---
 
         # ---- question add/remove -------------------------------------------------
         def _set_n(n: int, delta: int):
@@ -817,6 +851,45 @@ def build_ui() -> gr.Blocks:
 
         run.click(_run_stream, [state, image, models, hardware, q1type, q1ins, q1opts, nq] + qtypes + qinstr + qopts,
                   [status, compare, cards, raw])
+
+        def _fill_example(raw_id: str):
+            ex_id = (raw_id or "").split("#", 1)[0].strip()
+            ex = EX.example_by_id(ex_id)
+            if ex is None:
+                return [gr.update()] * (5 + (MAX_QUESTIONS - 1) * 4 + 2)
+            f = EX.fill_values(ex, REGISTRY)
+            qs = f["questions"]
+            n = max(1, min(MAX_QUESTIONS, len(qs)))
+            q0 = qs[0]
+            out = [f["state"], q0["type"], q0["instructions"], gr.update(choices=q0.get("options") or [], value=q0.get("options") or []), n]
+            out += [gr.update(visible=(i + 1 < n)) for i in range(MAX_QUESTIONS - 1)]
+            for i in range(1, MAX_QUESTIONS):
+                if i < len(qs):
+                    q = qs[i]; op = q.get("options") or []
+                    out += [q["type"], q["instructions"], gr.update(choices=op, value=op)]
+                else:
+                    out += ["noul", "", gr.update(choices=[], value=[])]
+            out += [f["image"], gr.update(value=f["models"])]
+            return out
+
+        _ex_outputs = ([state, q1type, q1ins, q1opts, nq] + qrows
+                       + [x for trio in zip(qtypes, qinstr, qopts) for x in trio] + [image, models])
+        ex_pick.input(_fill_example, [ex_pick], _ex_outputs).then(
+            _run_stream, [state, image, models, hardware, q1type, q1ins, q1opts, nq] + qtypes + qinstr + qopts,
+            [status, compare, cards, raw])
+        # --- /LANE EXAMPLES ---
+
+        # --- LANE VIZ ---  (`raw` holds the exact dict _run_stream/answer() produced; any path that sets it re-draws)
+        _LORA = {m.name: lora_r(m) for m in REGISTRY}
+
+        def _viz(result):
+            try:
+                return viz.render(result, _LORA) if result else ""
+            except Exception as e:  # noqa: BLE001 -- a diagram bug must never hide the cards
+                return f'<div class="sdp sdp-foot">viz error: {E(f"{type(e).__name__}: {e}")}</div>'
+
+        raw.change(_viz, [raw], [viz_out])
+        # --- /LANE VIZ ---
 
     return demo
 
