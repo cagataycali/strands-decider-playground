@@ -200,7 +200,7 @@ def gallery_html() -> str:
         by_fam.setdefault(ex["family"], []).append(ex)
     n = len(data["examples"])
     n_measured = sum(1 for e in data["examples"] if (e.get("measured") or {}).get("answers"))
-    out = [f'<section class="sdx" id="sdx-gallery" aria-label="Examples">'
+    out = [f'<a id="sdx-gallery-host" class="sdx-anchor" aria-hidden="true"></a><section class="sdx" id="sdx-gallery" aria-label="Examples">'
            f'<div class="sdx-section"><h2>Examples</h2><span class="sub">{n} abilities · {n_measured} with a measured answer · '
            f'click one to fill the ask bar and run it</span></div>']
     for fam in data["families"]:

@@ -647,7 +647,6 @@ def footer_html() -> str:
     return (
         '<div class="sdp"><footer class="sdp-footer" id="sdp-footer" data-public-count="' + str(n) + '">'
         + MARK_SVG + f'<span><b>{n} public model{"s" if n != 1 else ""}</b>'
-        + (f" · {len(HIDDEN_PRIVATE)} private not listed" if PUBLIC_ONLY and HIDDEN_PRIVATE else "")
         + '</span><span class="sep">·</span>'
         f"<span>hardware <b>{E(hw)}</b></span><span class=\"sep\">·</span>"
         f"<span>torch <b>{E(torch.__version__)}</b> · transformers <b>{E(transformers.__version__)}</b> · gradio <b>{E(gr.__version__)}</b></span>"
@@ -779,7 +778,7 @@ def build_ui() -> gr.Blocks:
                 unload = gr.Button("Unload models", scale=1)
 
         # --- LANE EXAMPLES ---
-        gr.HTML(EX.gallery_html(), elem_classes=["sdp-plain"], elem_id="sdx-gallery-host")
+        gr.HTML(EX.gallery_html(), elem_classes=["sdp-plain"], elem_id="sdp-examples")  # LANDING's "See the examples" target
         ex_pick = gr.Textbox(value="", visible=True, elem_id="sdx-pick", container=False, show_label=False,
                              elem_classes=["sdx-hidden"])  # 1x1 px via CSS; JS writes "<example-id>#<nonce>" here
         # --- LANE BENCH ---  (JevBench picker: click a task -> fills the ask bar + runs; gold shown only after the answers)
