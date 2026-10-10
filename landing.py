@@ -198,7 +198,7 @@ def figure_svg() -> str:
 
 def hero_html(n_models: int) -> str:
     return (
-        f'<div class="ld" id="ld-hero"><style>{LANDING_CSS}</style>'
+        '<div class="ld" id="ld-hero">'
         '<section class="ld-hero">'
         '<div class="ld-hero__copy">'
         '<h1 class="ld-hero__title">One question. <em>Every decider.</em></h1>'
@@ -207,7 +207,7 @@ def hero_html(n_models: int) -> str:
         'calibrated confidence.</p>'
         '<div class="ld-hero__actions">'
         '<a class="sr-btn sr-btn--primary" href="#sdp-ask" data-ld-scroll="#sdp-ask textarea">Ask a question now</a>'
-        '<a class="sr-btn" href="#sdp-examples" data-ld-scroll="#sdp-examples, #sdp-ask">See the examples</a>'
+        '<a class="sr-btn" href="#sdx-gallery-host" data-ld-scroll="#sdx-gallery-host, #sdp-examples, #sdp-ask">See the examples</a>'
         f'<span class="sr-install"><code>{E(PIP_PYPI)}</code>{_copy_btn(PIP_PYPI)}</span>'
         '</div>'
         f'<p class="ld-hero__note">{n_models} public checkpoints from <a href="{HF_ORG_URL}" target="_blank" rel="noopener">StrandsAgents</a> '
@@ -349,7 +349,7 @@ def footer_html() -> str:
         '<p class="ld-cta__links"><a href="#sdp-ask" data-ld-scroll="#sdp-ask textarea">Ask a question &rarr;</a>'
         f'<a href="{REPO_URL}#getting-started" target="_blank" rel="noopener">Install &rarr;</a>'
         f'<a href="{AGENT_EXAMPLE_URL}" target="_blank" rel="noopener">Agent example &rarr;</a></p></div></section>'
-        '<footer class="ld-footer"><div class="ld-footer__inner">'
+        '<section class="ld-footer" aria-label="links"><div class="ld-footer__inner">'
         '<p class="ld-footer__kicker">Start deciding in seconds</p>'
         f'<p class="sr-install sr-install--footer"><code>{E(PIP_PYPI)}</code>{_copy_btn(PIP_PYPI)}</p>'
         f'<div class="ld-footer__columns">{col_html}</div></div>'
@@ -357,7 +357,7 @@ def footer_html() -> str:
         f'<div class="ld-footer__legal"><span class="ld-footer__brand">{MARK}<span class="ld-wordmark-wrap">{WORDMARK}</span><span class="proj mono">/decider</span></span>'
         f'<a href="{REPO_URL}/blob/main/LICENSE" target="_blank" rel="noopener">Apache-2.0</a>'
         '<span class="muted">models: StrandsAgents on Hugging Face · page: strands design system</span></div>'
-        '</footer></div>'
+        '</section></div>'
     )
 
 
@@ -406,12 +406,12 @@ def demo_page(dark: bool = False) -> str:
     body = ('<div class="gradio-container">' + hero_html(n) + proof_html(n)
             + '<div id="sdp-ask" class="ld-demo-ask"><label>State — what is being decided about'
               '<textarea rows="3" placeholder="the ask bar of the running app sits here"></textarea></label></div>'
-              '<div id="sdp-examples" class="ld-demo-ask"><em>examples region (LANE EXAMPLES)</em></div>'
+              '<div id="sdx-gallery-host" class="ld-demo-ask"><em>examples region (LANE EXAMPLES)</em></div>'
             + howto_html() + models_html(reg) + footer_html() + '</div>')
     return (f'<!doctype html><html class="{"dark" if dark else ""}" lang="en"><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width, initial-scale=1">'
             '<title>Strands Decider Playground — landing preview</title>'
-            f'<style>{_tokens_css_inlined()}</style>'
+            f'<style>{_tokens_css_inlined()}</style><style>{LANDING_CSS}</style>'
             '<style>body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sr-text)}'
             '.gradio-container{max-width:1280px;margin:0 auto;padding:0 24px}'
             '.ld-demo-ask{border:1px dashed var(--hair);border-radius:8px;padding:14px;margin:18px 0;color:var(--muted);font-size:.8rem}'

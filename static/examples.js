@@ -18,7 +18,15 @@
       // Gradio reads the component value from the DOM on 'input'; a nonce makes re-clicking the
       // same example fire again.
       box.value = id + '#' + Date.now().toString(36);
+      // MEASURED (Gradio 6.30, Chromium): a bare 'input' Event does NOT reach the Python .input()
+      // handler; real typing does. Gradio's Textbox reads the value on key events, so a synthetic
+      // keydown/keypress/keyup after the input event is what makes the server see the new value.
+      box.focus({ preventScroll: true });
       box.dispatchEvent(new Event('input', { bubbles: true }));
+      ['keydown', 'keypress', 'keyup'].forEach(function (k) {
+        box.dispatchEvent(new KeyboardEvent(k, { bubbles: true, key: 'Unidentified' }));
+      });
+      box.blur();
       var ask = document.querySelector('#sdp-ask');
       if (ask && ask.scrollIntoView) ask.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }

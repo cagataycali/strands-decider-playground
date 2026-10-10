@@ -631,7 +631,7 @@ def header_html() -> str:
         '<span class="project">/decider-playground</span><span class="tag" style="margin-left:auto">public checkpoints only</span></header></div>'
         # --- LANE LANDING ---  (hero REPLACES DESIGN's .sdp-hero text block, per LANDING 02:19Z; header row above is kept.
         #                        `count` = "N public models read live … Enter runs · Esc clears" is available to reuse.)
-        + landing.hero_html(n)
+        + landing.hero_html(n) + landing.proof_html(n)
         # --- /LANE LANDING ---
     )
 
@@ -775,7 +775,9 @@ def build_ui() -> gr.Blocks:
             raw = gr.JSON(value=None)
         # --- LANE LANDING ---  (how-to-use / install CTA + footer; replace footer_html() with yours if you own the footer —
         #                        exactly ONE footer on the page, keep data-public-count=N on it)
-        gr.HTML(footer_html(), elem_classes=["sdp-plain"])
+        # LANDING: how-to-use CTA + model row above DESIGN's footer line (data-public-count stays there, the ONE <footer>),
+        # then the robots-style landing foot (CTA panel, install line, link columns, wordmark) below it.
+        gr.HTML(landing.howto_html() + landing.models_html(REGISTRY) + footer_html() + landing.footer_html(), elem_classes=["sdp-plain"])
         # --- /LANE LANDING ---
 
         # ---- question add/remove -------------------------------------------------

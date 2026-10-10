@@ -8,7 +8,7 @@ Public API
     gallery_html()             -> str  (server-rendered gallery; static/examples.js makes it clickable)
     example_by_id(id)          -> dict | None
     fill_values(ex, registry)  -> dict with everything the ask bar needs to be filled from one example:
-                                  state, questions[{type, instructions, options}], image (PIL|None),
+                                  state, questions[{type, instructions, options}], image (str path|None -- a path, not PIL: see fill_values),
                                   models (list[str] -- ONLY the vision models for vision_only examples)
     CSS / JS                   -> file contents for app.py to append to its launch(css=, js=)
 
@@ -48,11 +48,14 @@ def image_path(ex: dict) -> Path | None:
 
 def fill_values(ex: dict, registry: list[Any] | None = None) -> dict:
     """Everything the ask bar needs. `registry` = app.REGISTRY (ModelInfo with .name/.vision)."""
-    img = None
+    # The image goes to the gr.Image component as a FILE PATH, never as a PIL object: gr.Image's
+    # default output format is lossy WebP (gradio 6.30: Image().format == "webp"), and a PIL value
+    # is re-encoded through it before the model sees it. MEASURED: form_signed.png as PIL -> model
+    # read P(true) 0.5510; the precomputed answer on the original bytes is 0.6868. A path is served as-is.
+    img: str | None = None
     p = image_path(ex)
     if p is not None:
-        from PIL import Image
-        img = Image.open(p).convert("RGB")
+        img = str(p)
     models: list[str] | None = None
     if registry is not None:
         if ex.get("vision_only"):

@@ -60,6 +60,18 @@
     // Gradio 6 swaps gr.HTML content in a way the observer does not always see (measured: the final
     // cards render arrived with 44 unprocessed nodes); a 250 ms sweep is the cheap, deterministic backstop.
     setInterval(() => reveal(document), 250);
+    // INTEGRATE: a run started (status dot goes live) -> bring the status + results into view once per run.
+    // The examples gallery sits between the ask bar and the results, so without this a click on
+    // "Decide" or on an example card streams cards thousands of px below the fold.
+    let wasLive = false;
+    setInterval(() => {
+      const live = !!document.querySelector('.sdp-status .dot.live');
+      if (live && !wasLive) {
+        const s = document.querySelector('.sdp-status');
+        if (s) { const y = s.getBoundingClientRect().top + window.scrollY - 24; window.scrollTo({ top: y, behavior: REDUCED ? 'auto' : 'smooth' }); }
+      }
+      wasLive = live;
+    }, 150);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 

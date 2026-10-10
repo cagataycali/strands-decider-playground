@@ -157,31 +157,34 @@
 .ld .ld-tag.on { color: var(--text); border-color: color-mix(in srgb, var(--accent) 55%, transparent); background: var(--accent-soft); }
 
 /* ---- 5. footer (robots home-footer: rounded CTA over the green surface, columns, full-width wordmark) ---- */
-.ld-cta, .ld-footer { margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw); }
-.ld-cta { background: var(--surface-green); margin-top: 2.6rem; }
+/* contained in the content column (a full-bleed negative-margin trick measured inconsistently inside Gradio's .block) */
+.ld-cta { background: var(--surface-green); margin-top: 2.6rem; border-radius: var(--sr-radius) var(--sr-radius) 0 0; }
 .ld-cta__panel { background: var(--bg); border-radius: 0 0 64px 64px; padding: 2.4rem 1rem 2.8rem; text-align: center; }
 .ld .ld-cta__title { font-family: var(--sr-mono); font-size: 1.45rem; letter-spacing: 0.06em; font-weight: var(--w-semibold); margin: 0 auto 1.1rem; max-width: 36rem; color: var(--fg); line-height: 1.3; }
 .ld .ld-cta__links { display: flex; justify-content: center; flex-wrap: wrap; gap: 1.2rem 2rem; font-family: var(--sr-mono); font-size: 0.75rem; font-weight: var(--w-semibold); }
 .gradio-container .ld .ld-cta__links a, .ld .ld-cta__links a { color: var(--fg); text-decoration: none; }
 .ld .ld-cta__links a:hover { color: var(--accent); }
-.ld-footer { background: var(--surface-green); color: var(--sr-black); padding-top: 2rem; }
-.gradio-container .ld .ld-footer a, .ld .ld-footer a { color: var(--sr-black); text-decoration: none; }
+.ld-footer { background: var(--surface-green); color: var(--sr-black); padding-top: 2rem; border-radius: 0 0 var(--sr-radius) var(--sr-radius); overflow: hidden; }
+/* !important: over the green surface the text MUST be black (5.5:1); Gradio's own .prose a / dark rules otherwise win */
+.gradio-container .ld .ld-footer a, .ld .ld-footer a { color: var(--sr-black) !important; text-decoration: none; }
 .ld .ld-footer a:hover { text-decoration: underline; }
 .ld-footer__inner { max-width: 1232px; margin: 0 auto; padding: 0 24px; }
-.ld .ld-footer__kicker, .ld .ld-footer__heading { font-family: var(--sr-mono); font-size: var(--fs-caption); font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; margin: 0 0 0.6rem; color: var(--sr-black); }
+.ld .ld-footer__kicker, .ld .ld-footer__heading { font-family: var(--sr-mono); font-size: var(--fs-caption); font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; margin: 0 0 0.6rem; color: var(--sr-black) !important; }
 .ld .sr-install--footer { background: var(--sr-black); border-color: var(--sr-black); color: #ffffff; margin: 0 0 1.8rem; }
 .ld .sr-install--footer .sr-copy, .gradio-container .ld .sr-install--footer button.sr-copy { background: var(--sr-black) !important; color: #ffffff !important; border-color: #666464 !important; }
 .ld-footer__columns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.2rem; max-width: 44rem; }
 .ld-footer__columns ul { list-style: none; margin: 0; padding: 0; font-size: var(--fs-small); line-height: 1.9; }
 .ld-footmark { padding: 2rem 24px 0.5rem; }
 .ld-footmark .ld-wordmark { display: block; width: 100%; height: auto; color: var(--sr-black); opacity: 0.9; }
+.ld-footmark .ld-wordmark path, .ld-footer__brand .ld-wordmark path { fill: var(--sr-black) !important; }
 .ld-footer__legal { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 2rem; padding: 0.8rem 24px 1.4rem; font-family: var(--sr-mono); font-size: 0.6rem; max-width: 1280px; margin: 0 auto; }
 .ld-footer__brand { display: inline-flex; align-items: center; gap: 0.5rem; }
 .ld-footer__brand .ld-mark { width: 16px; height: 16px; image-rendering: pixelated; }
-.ld-footer__brand .ld-mark path { fill: var(--sr-black); }
+.ld-footer__brand .ld-mark path { fill: var(--sr-black) !important; }
 .ld-footer__brand .ld-wordmark-wrap .ld-wordmark { height: 0.8rem; width: auto; display: block; color: var(--sr-black); }
 .ld-footer__brand .proj { font-weight: var(--w-semibold); }
-.ld .ld-footer__legal .muted { color: var(--sr-black); opacity: 0.85; }
+.ld .ld-footer__legal .muted { color: var(--sr-black) !important; opacity: 0.85; }
+.ld .ld-footer__columns li, .ld .ld-footer__legal { color: var(--sr-black); }
 
 /* ---- responsive ---- */
 @media (max-width: 960px) {
