@@ -14,7 +14,7 @@
 
 .sdx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
 
-.sdx-card { position: relative; display: flex; flex-direction: column; gap: 9px; padding: 14px 14px 12px;
+.sdx-card { position: relative; display: flex; flex-direction: column; gap: 8px; padding: 14px 14px 10px;
   background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--sr-radius); cursor: pointer;
   transition: border-color var(--t-fast) var(--ease-out), transform var(--t-base) var(--ease-out); outline: none; }
 .sdx-card:hover, .sdx-card:focus-visible { border-color: var(--accent); }
@@ -69,6 +69,24 @@
 
 .sdx-teaches { margin: 0; display: grid; grid-template-columns: 54px 1fr; gap: 6px; font-size: var(--fs-small); line-height: var(--lh-body); color: var(--text-light); }
 .sdx-teaches .lbl { padding-top: 2px; }
+
+/* compact card: title · chips · one line · the headline number; everything else behind <details> */
+.sdx-headline { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; padding: 6px 0 2px; border-top: var(--hairline) solid var(--hair); }
+.sdx-headline .k { font-family: var(--sr-mono); font-size: var(--fs-small); color: var(--muted); }
+.sdx-headline .v { font-family: var(--sr-mono); font-size: 1.05rem; font-weight: var(--w-semibold); color: var(--accent); letter-spacing: var(--tracking-h); }
+.sdx-headline .c { font-family: var(--sr-mono); font-size: var(--fs-small); color: var(--text-light); margin-left: auto; }
+.sdx-headline.none { font-family: var(--sr-mono); font-size: var(--fs-small); color: var(--muted); }
+.sdx-noul.mini { display: block; flex: 1 1 60px; height: 6px; margin: 0; align-self: center; }
+.sdx-more { border-top: var(--hairline) solid var(--hair); }
+.sdx-more summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; gap: 8px; padding: 6px 0;
+  font-family: var(--sr-mono); font-size: var(--fs-small); font-weight: var(--w-medium); letter-spacing: var(--tracking-caption); color: var(--text-light); }
+.sdx-more summary::-webkit-details-marker { display: none; }
+.sdx-more summary::before { content: "+"; display: inline-block; width: 1em; color: var(--muted); }
+.sdx-more[open] summary::before { content: "\2212"; }
+.sdx-more summary:hover, .sdx-more summary:focus-visible { color: var(--accent); outline: none; }
+.sdx-more summary:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
+.sdx-more-sub { font-weight: var(--w-regular, 400); letter-spacing: 0; color: var(--muted); font-family: var(--sr-text); }
+.sdx-more-body { display: flex; flex-direction: column; gap: 9px; padding: 2px 0 8px; cursor: default; }
 
 .sdx-cta { display: flex; justify-content: flex-end; margin-top: auto; }
 .sdx-run { font-family: var(--sr-mono); font-size: var(--fs-small); font-weight: var(--w-medium); letter-spacing: var(--tracking-caption); color: var(--text-light); transition: color var(--t-fast); }

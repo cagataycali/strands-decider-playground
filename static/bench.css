@@ -98,3 +98,16 @@
 .sdb-tline code { font-family: var(--sr-mono); color: var(--text); }
 .sdb-hidden { position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important; opacity: 0.01; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { .sdb-status .sdb-live::before, .sdb-board .sdb-live .sdb-c.sdb-new { animation: none; } .sdb-bar span, .sdb-board .sdb-c { transition: none; } }
+
+/* legend reads before the board (DOM order unchanged: flex order) */
+.sdb-wrap { display: flex; flex-direction: column; }
+.sdb-wrap .sdb-status { order: 0; } .sdb-wrap .sdb-legend { order: 1; margin: 4px 0 8px; } .sdb-wrap .sdb-scroll { order: 2; } .sdb-wrap .sdb-tip { order: 3; }
+/* checkboxes under the token theme: a 14px box beside the label, never a filled bar */
+.gradio-container .sdb-controls label:has(input[type=checkbox]) { background: transparent !important; border: 0 !important; padding: 4px 0 !important; display: flex; align-items: center; gap: 8px; }
+.gradio-container .sdb-controls input[type=checkbox] { width: 14px; height: 14px; flex: none; accent-color: var(--accent); border: 1px solid var(--pill-border); background: var(--bg); border-radius: var(--sr-radius-small); }
+.gradio-container .sdb-controls label:has(input[type=checkbox]) span { color: var(--text) !important; font-size: var(--fs-small); text-transform: none; letter-spacing: 0; }
+/* the "hard for everyone" / "one model knows this" lists: 12 lines, the rest behind a disclosure */
+.sdb-moretasks summary { list-style: none; cursor: pointer; font-family: var(--sr-mono); font-size: var(--fs-small); color: var(--text-light); padding: 4px 0; }
+.sdb-moretasks summary::-webkit-details-marker { display: none; }
+.sdb-moretasks summary::before { content: "+ "; color: var(--muted); } .sdb-moretasks[open] summary::before { content: "\2212 "; }
+.sdb-moretasks summary:hover { color: var(--accent); }

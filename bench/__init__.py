@@ -861,6 +861,14 @@ def gold_html(tid: str | None, result: dict | None) -> str:
 # ---------------------------------------------------------------------------------
 # common errors: only patterns we can COUNT
 # ---------------------------------------------------------------------------------
+def _tlines(lines: list[str], show: int = 12) -> str:
+    """A task list that stays short: the first `show` lines, the rest behind a 'show all N' disclosure."""
+    if len(lines) <= show:
+        return "".join(lines)
+    return ("".join(lines[:show])
+            + f'<details class="sdb-moretasks"><summary>show all {len(lines)}</summary>{"".join(lines[show:])}</details>')
+
+
 def errors_html(job: Job | None, labels: dict[str, str], include_published: bool = True) -> str:
     """Common-error panels: per model, per task, models x tiers, and the paired McNemar test."""
     rows = _rows_from_job(job, labels)
@@ -919,12 +927,12 @@ def errors_html(job: Job | None, labels: dict[str, str], include_published: bool
         hard_all, one = [], []
         out.append(f'<div class="sdb-dim">per-task panels need ≥ 3 models in the run (this one has {n}); the per-model panel above still counts.</div>')
     out.append(f'<div class="sdb-grid2"><div class="sdb-card"><div class="sdb-ct">hard for everyone <span class="sdb-dim">missed by ≥ {thr} of {n}</span></div>'
-               + "".join(f'<div class="sdb-tline" data-task="{E(tid)}"><code>{E(tid)}</code> <span class="sdb-dim">{E(ts[tid].family)} · {k}/{n} wrong</span></div>'
-                         for tid, k in sorted(hard_all, key=lambda x: -x[1])[:40])
+               + _tlines([f'<div class="sdb-tline" data-task="{E(tid)}"><code>{E(tid)}</code> <span class="sdb-dim">{E(ts[tid].family)} · {k}/{n} wrong</span></div>'
+                          for tid, k in sorted(hard_all, key=lambda x: -x[1])[:40]])
                + (f'<div class="sdb-dim">{len(hard_all)} tasks</div>' if hard_all else '<div class="sdb-dim">none</div>') + "</div>")
     out.append(f'<div class="sdb-card"><div class="sdb-ct">one model knows this <span class="sdb-dim">exactly 1 of {n} right</span></div>'
-               + "".join(f'<div class="sdb-tline" data-task="{E(tid)}"><code>{E(tid)}</code> <span class="sdb-dim">{E(ts[tid].family)} ·</span> <b>{E(m)}</b></div>'
-                         for tid, m in one[:40])
+               + _tlines([f'<div class="sdb-tline" data-task="{E(tid)}"><code>{E(tid)}</code> <span class="sdb-dim">{E(ts[tid].family)} ·</span> <b>{E(m)}</b></div>'
+                          for tid, m in one[:40]])
                + (f'<div class="sdb-dim">{len(one)} tasks</div>' if one else '<div class="sdb-dim">none</div>') + "</div></div>")
 
     # models x tiers

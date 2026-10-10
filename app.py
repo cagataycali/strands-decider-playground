@@ -553,6 +553,19 @@ def grid_html(done: list[dict], pending: list[ModelInfo], specs: list[dict], qid
     return f'<div class="sdp sdp-grid">{"".join(parts)}</div>'
 
 
+def section_html(title: str, why: str, elem_id: str = "", kick: str = "") -> str:
+    """A section header in one pattern: optional step kicker (mono, muted), title, one-sentence why."""
+    kicker = f'<span class="kick">{E(kick)}</span>' if kick else ""
+    eid = f' id="{E(elem_id)}"' if elem_id else ""
+    return f'<div class="sdp sdp-section"{eid}>{kicker}<h2>{E(title)}</h2><span class="sub">{E(why)}</span></div>'
+
+
+def empty_html(text: str, elem_id: str = "") -> str:
+    """What will appear in an empty results slot, in the dim style (replaced by the real surface after Decide)."""
+    eid = f' id="{E(elem_id)}"' if elem_id else ""
+    return f'<div class="sdp sdp-empty"{eid}>{E(text)}</div>'
+
+
 def status_html(kind: str, text: str, done: int = 0, total: int = 0) -> str:
     """Status line with a dot (kind = live | ok | err | "") and an optional progress bar."""
     bar = (f'<span class="progress"><i data-sdp="progress" data-w="{100 * done / total:.1f}"></i></span>' if total else "")
@@ -751,6 +764,9 @@ def build_ui() -> gr.Blocks:
         gr.HTML(header_html(), elem_classes=["sdp-plain"])
 
         # ---- ask bar -------------------------------------------------------------
+        gr.HTML('<div class="sdp sdp-kick" id="sdp-step-ask"><span class="kick">01 · ask</span>'
+                '<span class="why">Type a piece of state and a question, or pick an example or a benchmark task below — every public decider answers it.</span></div>',
+                elem_classes=["sdp-plain"])
         with gr.Group(elem_id="sdp-ask"):
             state = gr.Textbox(label="State — what is being decided about", lines=3, value=GOLDEN_STATE,
                                placeholder="Paste the ticket, message, document, board position…")
@@ -760,7 +776,7 @@ def build_ui() -> gr.Blocks:
                 q1ins = gr.Textbox(label="Question", value="Does this convey urgency?", scale=6,
                                    placeholder="Which team should handle this?")
             q1opts = gr.Dropdown(choices=[], value=[], multiselect=True, allow_custom_value=True,
-                                 label="Options — type one and press Enter to add a chip (choice needs 2+, score 2–10 ascending; none for yes/no)")
+                                 label="Options", info="type one, press Enter · choice needs 2 or more · score 2–10 in ascending order · none for yes/no")
             with gr.Accordion("More questions", open=False):
                 nq = gr.State(1)
                 qrows, qtypes, qinstr, qopts = [], [], [], []
@@ -783,8 +799,8 @@ def build_ui() -> gr.Blocks:
             with gr.Row():
                 run = gr.Button("Decide", variant="primary", elem_id="sdp-run", scale=3)
                 golden = gr.Button("Load golden question", scale=2)
-                clear = gr.Button("Clear", elem_id="sdp-clear", scale=1)
-                unload = gr.Button("Unload models", scale=1)
+                clear = gr.Button("Clear", elem_id="sdp-clear", scale=1, variant="secondary", size="sm", elem_classes=["sdp-quiet"])
+                unload = gr.Button("Unload models", scale=1, variant="secondary", size="sm", elem_classes=["sdp-quiet"])
 
         # Example gallery. #sdp-examples is the landing hero's "See the examples" target; a card click
         # writes "<example-id>#<nonce>" into the hidden textbox (1x1 px via CSS), which fills and runs.
@@ -792,55 +808,69 @@ def build_ui() -> gr.Blocks:
         ex_pick = gr.Textbox(value="", visible=True, elem_id="sdx-pick", container=False, show_label=False,
                              elem_classes=["sdx-hidden"])
         # JevBench picker: click a task -> fills the ask bar + runs; the gold answer is shown only after the answers.
-        gr.HTML('<div class="sdp sdp-section" id="sdb-head"><h2>JevBench</h2><span class="sub">231 public tasks, straight from the benchmark — pick one, or run them all below</span></div>',
+        gr.HTML(section_html("Try a benchmark task", "231 public JevBench tasks — click one to run it like an example; the gold answer appears after the models answer", "sdb-head"),
                 elem_classes=["sdp-plain"])
         gr.HTML(bench.picker_html(), elem_classes=["sdp-plain"], elem_id="sdb-picker-host")
         bench_pick = gr.Textbox(value="", visible=True, elem_id="sdb-pick", container=False, show_label=False, elem_classes=["sdb-hidden"])
         bench_tid = gr.State("")  # the JevBench task the ask bar currently holds ("" = a free question)
 
 
-        status = gr.HTML(status_html("", "Ready."), elem_classes=["sdp-plain"])
-        gr.HTML('<div class="sdp sdp-section"><h2>Comparison</h2><span class="sub">argmax per model and the full distribution per option</span></div>',
-                elem_classes=["sdp-plain"])
-        compare = gr.HTML("", elem_classes=["sdp-plain"])
-        gr.HTML('<div class="sdp sdp-section"><h2>Models</h2><span class="sub">labelled by base and LoRA rank — the digits in a repo name are not a size</span></div>',
-                elem_classes=["sdp-plain"])
-        cards = gr.HTML(grid_html([], REGISTRY, [], [], None).replace("queued", "idle"), elem_classes=["sdp-plain"])
-        # Gold answer + JevBench score per model, rendered from `raw` after the models answered.
-        bench_gold = gr.HTML("", elem_classes=["sdp-plain"], elem_id="sdb-gold")
-        # Decision diagrams, re-drawn from the result dict whenever `raw` changes (see raw.change below).
-        gr.HTML('<div class="sdp sdp-section" id="sdp-viz-head"><h2>Decisions</h2><span class="sub">every decider on one diagram — same choice, different certainty</span></div>',
-                elem_classes=["sdp-plain"])
-        viz_out = gr.HTML("", elem_classes=["sdp-plain"], elem_id="sdp-viz")
+        # ---- results band: everything a Decide fills, on one surface ------------
+        EMPTY_COMPARE = empty_html("appears after Decide — every model's answer in one table, so agreement and the odd one out are visible at a glance")
+        EMPTY_VIZ = empty_html("appears after Decide — the consensus diagram: where the deciders agree, and how sure each one is")
+
+        def idle_grid_html() -> str:
+            """The card grid before any run: one static placeholder per model (no shimmer — nothing is loading)."""
+            return grid_html([], REGISTRY, [], [], None).replace("queued", "idle").replace('class="sdp sdp-grid"', 'class="sdp sdp-grid idle"')
+
+        with gr.Column(elem_id="sdp-results", elem_classes=["sdp-band"]):
+            gr.HTML('<div class="sdp sdp-kick"><span class="kick">02 · see</span>'
+                    '<span class="why">The answers land here: one table, one card per model, one diagram.</span></div>', elem_classes=["sdp-plain"])
+            status = gr.HTML(status_html("", "Ready."), elem_classes=["sdp-plain"])
+            gr.HTML(section_html("Comparison", "the option every model picked, and the full distribution behind it"), elem_classes=["sdp-plain"])
+            compare = gr.HTML(EMPTY_COMPARE, elem_classes=["sdp-plain"])
+            gr.HTML(section_html("Models", "one card per decider: name · base · LoRA rank · the answer, its confidence, memory and latency"), elem_classes=["sdp-plain"])
+            cards = gr.HTML(idle_grid_html(), elem_classes=["sdp-plain"])
+            # Gold answer + JevBench score per model, rendered from `raw` after the models answered.
+            bench_gold = gr.HTML("", elem_classes=["sdp-plain"], elem_id="sdb-gold")
+            # Decision diagrams, re-drawn from the result dict whenever `raw` changes (see raw.change below).
+            gr.HTML(section_html("Decisions", "every decider on one diagram — same choice, different certainty", "sdp-viz-head"), elem_classes=["sdp-plain"])
+            viz_out = gr.HTML(EMPTY_VIZ, elem_classes=["sdp-plain"], elem_id="sdp-viz")
         # Run the bench + the activity board + common errors (see bench/__init__.py).
         _BENCH_LABELS.update({m.name: f"{m.name.replace('strands-decider-', '')} · {model_label(m)}" for m in REGISTRY})
-        gr.HTML('<div class="sdp sdp-section" id="sdb-board-head"><h2>JevBench board</h2><span class="sub">task × model — accent = correct, ink = wrong, opacity = how sure · published runs from the strands-decider repo are the italic rows</span></div>',
-                elem_classes=["sdp-plain"])
-        with gr.Row(elem_classes=["sdb-controls"]):
-            bench_scope = gr.Dropdown(choices=["full JevBench (231)", "tier: easy", "tier: standard", "tier: hard"], value="full JevBench (231)",
-                                      label="Scope", scale=2, elem_id="sdb-scope")
-            bench_model = gr.Dropdown(choices=["all public models"] + names, value="all public models", label="Models", scale=2, elem_id="sdb-model")
-            bench_run = gr.Button("Run JevBench", variant="primary", elem_id="sdb-run", scale=1)
-            bench_cancel = gr.Button("Cancel", scale=1)
-            bench_hist = gr.Checkbox(value=False, label="show 32 correct-only history runs", scale=2)
-        with gr.Row(elem_classes=["sdb-controls"]):
-            _hc = bench.history_choices()
-            bench_history = gr.Dropdown(choices=_hc, value=(_hc[0][1] if _hc else None), label="History", scale=2, elem_id="sdb-history",
-                                        info="the vendored baseline first, then runs started on this Space")
-            bench_sched_on = gr.Checkbox(value=False, label="repeat daily (UTC)", scale=1)
-            bench_sched_at = gr.Textbox(value="03:00", label="at HH:MM UTC", max_lines=1, scale=1)
+        # ---- bench band: the board, its controls, the error panels -------------
+        with gr.Column(elem_id="sdp-bench", elem_classes=["sdp-band"]):
+            gr.HTML('<div class="sdp sdp-kick"><span class="kick">03 · bench</span>'
+                    '<span class="why">All 231 JevBench tasks against every public model — read the vendored baseline, or run it again here.</span></div>',
+                    elem_classes=["sdp-plain"])
+            gr.HTML(section_html("JevBench board", "one row per model, one column per task; green = right, dark = wrong, the shade = how sure it was", "sdb-board-head"),
+                    elem_classes=["sdp-plain"])
+            with gr.Row(elem_classes=["sdb-controls"]):
+                _hc = bench.history_choices()
+                bench_history = gr.Dropdown(choices=_hc, value=(_hc[0][1] if _hc else None), label="Showing", scale=3, elem_id="sdb-history",
+                                            info="the vendored baseline first, then runs started on this Space")
+                bench_scope = gr.Dropdown(choices=["full JevBench (231)", "tier: easy", "tier: standard", "tier: hard"], value="full JevBench (231)",
+                                          label="Scope", scale=2, elem_id="sdb-scope")
+                bench_model = gr.Dropdown(choices=["all public models"] + names, value="all public models", label="Models", scale=2, elem_id="sdb-model")
+                bench_run = gr.Button("Run JevBench", variant="primary", elem_id="sdb-run", scale=1)
+                bench_cancel = gr.Button("Cancel", scale=1)
+            with gr.Accordion("Daily schedule · older history rows", open=False, elem_id="sdb-more"):
+                with gr.Row(elem_classes=["sdb-controls"]):
+                    bench_hist = gr.Checkbox(value=False, label="show the correct-only history runs (32 rows)", scale=2)
+                    bench_sched_on = gr.Checkbox(value=False, label="repeat daily (UTC)", scale=1)
+                    bench_sched_at = gr.Textbox(value="03:00", label="at HH:MM UTC", max_lines=1, scale=1)
             bench_est = gr.HTML(bench_estimate_html(names, "full JevBench (231)", "all public models"), elem_classes=["sdp-plain"])
-        bench_board = gr.HTML(bench.board_html(bench.latest(), _BENCH_LABELS), elem_classes=["sdp-plain"], elem_id="sdb-board")
-        bench_detail_pick = gr.Textbox(value="", visible=True, elem_id="sdb-detail", container=False, show_label=False, elem_classes=["sdb-hidden"])
-        bench_detail = gr.HTML('<div class="sdp sdb-dim">click a column (or a task in the error panels) for the task detail — state, question, every model\'s answer side by side</div>',
-                               elem_classes=["sdp-plain"], elem_id="sdb-detail-out")
-        gr.HTML('<div class="sdp sdp-section"><h2>Common errors</h2><span class="sub">only what can be counted — per model, per task, models × tiers, and the paired McNemar test strands-decider itself uses</span></div>',
-                elem_classes=["sdp-plain"])
-        bench_errors = gr.HTML(bench.errors_html(bench.latest(), _BENCH_LABELS), elem_classes=["sdp-plain"], elem_id="sdb-errors")
-        bench_sig = gr.State("")
-        bench_timer = gr.Timer(3.0, active=True)
-        with gr.Accordion("Raw result — every number on this page comes from here", open=False):
-            raw = gr.JSON(value=None)
+            bench_board = gr.HTML(bench.board_html(bench.latest(), _BENCH_LABELS), elem_classes=["sdp-plain"], elem_id="sdb-board")
+            bench_detail_pick = gr.Textbox(value="", visible=True, elem_id="sdb-detail", container=False, show_label=False, elem_classes=["sdb-hidden"])
+            bench_detail = gr.HTML(empty_html("click a column of the board (or a task in the error panels) for the task detail — state, question, every model's answer side by side"),
+                                   elem_classes=["sdp-plain"], elem_id="sdb-detail-out")
+            gr.HTML(section_html("Common errors", "only what can be counted — which tasks each model misses, which tasks everyone misses, and the paired McNemar test strands-decider itself uses"),
+                    elem_classes=["sdp-plain"])
+            bench_errors = gr.HTML(bench.errors_html(bench.latest(), _BENCH_LABELS), elem_classes=["sdp-plain"], elem_id="sdb-errors")
+            bench_sig = gr.State("")
+            bench_timer = gr.Timer(3.0, active=True)
+            with gr.Accordion("Raw result — every number on this page comes from here", open=False):
+                raw = gr.JSON(value=None)
         # How-to-use + model row, then the status footer (the one <footer>, carrying data-public-count),
         # then the landing foot: CTA panel, install line, link columns, wordmark.
         gr.HTML(landing.howto_html() + landing.models_html(REGISTRY) + footer_html() + landing.footer_html(), elem_classes=["sdp-plain"])
@@ -872,7 +902,7 @@ def build_ui() -> gr.Blocks:
             out += [gr.update(visible=False) for _ in range(MAX_QUESTIONS - 1)]
             for _ in range(1, MAX_QUESTIONS):
                 out += ["noul", "", gr.update(choices=[], value=[])]
-            out += [status_html("", "Cleared."), "", grid_html([], REGISTRY, [], [], None).replace("queued", "idle"), None]
+            out += [status_html("", "Cleared."), EMPTY_COMPARE, idle_grid_html(), None]
             return out
 
         clear.click(_clear, None, [state, q1type, q1ins, q1opts, nq] + qrows
@@ -956,7 +986,7 @@ def build_ui() -> gr.Blocks:
         def _viz(result):
             """Diagrams from the result dict; a drawing bug must never hide the cards."""
             try:
-                return viz.render(result, _LORA) if result else ""
+                return viz.render(result, _LORA) if result else EMPTY_VIZ
             except Exception as e:  # noqa: BLE001 -- a diagram bug must never hide the cards
                 return f'<div class="sdp sdp-foot">viz error: {E(f"{type(e).__name__}: {e}")}</div>'
 

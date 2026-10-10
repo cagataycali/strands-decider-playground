@@ -36,8 +36,14 @@
     root.querySelectorAll('.sdx-card').forEach(function (card) {
       if (card.__sdx) return;
       card.__sdx = true;
-      card.addEventListener('click', function () { choose(card); });
+      // The <details> disclosure inside the card opens/closes without running the example:
+      // only clicks outside it (and Enter/Space on the card itself) fire the pick.
+      card.addEventListener('click', function (ev) {
+        if (ev.target.closest && ev.target.closest('.sdx-more')) return;
+        choose(card);
+      });
       card.addEventListener('keydown', function (ev) {
+        if (ev.target !== card) return;
         if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); choose(card); }
       });
     });

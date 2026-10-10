@@ -190,18 +190,56 @@ def _card(ex: dict) -> str:
         measured = '<div class="sdx-measured none"><div class="cap">not yet measured</div></div>'
 
     thumb = _thumb(ex)
+    headline = _headline_html(m, qs)
+    n_more = len(qs)
     return (
         f'<article class="sdx-card{" has-img" if thumb else ""}" data-example="{E(ex["id"])}" tabindex="0" role="button" '
         f'aria-label="Load example: {E(ex["title"])}">'
         f'<div class="sdx-head">{thumb}<div class="sdx-title-wrap"><h3 class="sdx-title">{E(ex["title"])}</h3>'
         f'<div class="sdx-chips">{chips}</div></div></div>'
         f'<p class="sdx-shows">{E(ex["shows"])}</p>'
+        f'{headline}'
+        f'<details class="sdx-more"><summary>details <span class="sdx-more-sub">'
+        f'{"the request" if n_more == 1 else f"the {n_more} questions"} · the full answer · what it teaches</span></summary>'
+        f'<div class="sdx-more-body">'
         f'<div class="sdx-req">{"".join(req)}</div>'
         f'{measured}'
         f'<p class="sdx-teaches"><span class="lbl">teaches</span>{E(ex["teaches"])}</p>'
+        f'</div></details>'
         f'<div class="sdx-cta"><span class="sdx-run">run this example <span aria-hidden="true">&rarr;</span></span></div>'
         f'</article>'
     )
+
+
+def _headline_html(m: dict, qs: list[dict]) -> str:
+    """The one number a skimming visitor needs: the first measured answer as a single line.
+
+    noul -> P(true) 0.8581 · choice -> → billing · confidence 0.659 · score -> score 1.03 · confidence 0.509.
+    Unmeasured examples get the dim 'not yet measured' line instead. Numbers are read, never computed.
+    """
+    answers = (m or {}).get("answers") or {}
+    if not answers:
+        return '<div class="sdx-headline none">not yet measured — click to run it</div>'
+    qid, a = next(iter(answers.items()))
+    t = a.get("type") or (qs[0].get("type") if qs else "")
+    conf = a.get("confidence")
+    probs = a.get("probs") or {}
+    display = a.get("display", a.get("value"))
+    more = f' <span class="c">+{len(answers) - 1} more</span>' if len(answers) > 1 else ""
+    if t == "noul":
+        p = probs.get("true", probs.get("yes"))
+        if p is None:
+            try:
+                p = float(display)
+            except (TypeError, ValueError):
+                p = None
+        pct = f"{p * 100:.1f}" if isinstance(p, float) else "0"
+        bar = f'<span class="sdx-noul mini" role="img" aria-label="P(true) {_fmt(p, 3)}"><span style="--p:{pct}%"></span></span>' if p is not None else ""
+        return (f'<div class="sdx-headline"><span class="k">P(true)</span><span class="v">{_fmt(p, 4) if p is not None else E(str(display))}</span>'
+                f'{bar}{more}</div>')
+    k = "&rarr;" if t == "choice" else "score"
+    c = f'<span class="c">confidence {_fmt(conf)}</span>' if conf is not None else ""
+    return f'<div class="sdx-headline"><span class="k">{k}</span><span class="v">{E(str(display))}</span>{c}{more}</div>'
 
 
 def gallery_html() -> str:

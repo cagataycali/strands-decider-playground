@@ -34,6 +34,7 @@
   --card-bg: #ffffff;
   --card-border: var(--sr-black);
   --chip-bg: #f4f4f4;
+  --band: var(--chip-bg);                 /* section band: the chip surface, cards (bg) sit on it */
   --code-inline: #f4f4f4;
   --pill-bg: #ffffff;
   --pill-border: #999696;
@@ -72,6 +73,7 @@
   --card-bg: var(--sr-black);
   --card-border: #ffffff;
   --chip-bg: var(--sr-charcoal-1);
+  --band: color-mix(in srgb, #ffffff 5%, #000000);   /* fg at 5% over bg: one step above black */
   --code-inline: var(--sr-charcoal-2);
   --pill-bg: var(--sr-charcoal-1);
   --pill-border: var(--sr-charcoal-2);

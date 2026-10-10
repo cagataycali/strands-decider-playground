@@ -96,9 +96,24 @@ body, .gradio-container, gradio-app {
 .sdp-hero kbd { font-family: var(--sr-mono); font-size: 0.78em; background: var(--code-inline); color: var(--text); border: var(--hairline) solid var(--hair); border-radius: var(--sr-radius-small); padding: 0 5px; }
 
 /* section titles */
-.sdp-section { margin: 26px 0 10px; display: flex; align-items: baseline; gap: 10px; }
+.sdp-section { margin: 26px 0 10px; display: grid; grid-template-columns: 1fr; gap: 4px; }
 .sdp-section h2 { margin: 0; font-size: 1.05rem; font-weight: var(--w-semibold); color: var(--fg); }
-.sdp-section .sub { color: var(--muted); font-size: var(--fs-small); }
+.sdp-section .sub { color: var(--muted); font-size: var(--fs-small); max-width: 72ch; line-height: 1.45; }
+.sdp-section .kick, .sdp-kick .kick { font-family: var(--sr-mono); font-size: var(--fs-caption); font-weight: var(--w-medium); letter-spacing: var(--tracking-caption); text-transform: uppercase; color: var(--accent); }
+/* step kicker: the page reads as 01 ask · 02 see · 03 bench */
+.sdp-kick { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin: 30px 0 10px; padding-top: 10px; border-top: var(--hairline) solid var(--hair); }
+.sdp-kick .why { color: var(--text-light); font-size: var(--fs-small); max-width: 72ch; line-height: 1.45; }
+#sdp-step-ask { margin-top: 8px; border-top: 0; padding-top: 0; }
+/* section bands: one surface for everything a Decide fills, one for the bench */
+.gradio-container .sdp-band { background: var(--band) !important; border: var(--hairline) solid var(--hair) !important; border-radius: var(--sr-radius) !important;
+  padding: 2px 18px 18px !important; margin: 26px 0 0 !important; gap: 0 !important; }
+.gradio-container .sdp-band .sdp-kick, .sdp-band .sdp-kick { margin-top: 14px; border-top: 0 !important; padding-top: 0; }
+.gradio-container .sdp-band .block:not(.sdp-plain), .gradio-container .sdp-band .form, .gradio-container .sdp-band .accordion { background: var(--bg) !important; }
+/* empty states: what will appear here, in the dim style */
+.sdp-empty { color: var(--muted); font-size: var(--fs-small); font-family: var(--sr-mono); padding: 6px 0 6px 12px; margin: 10px 0 4px; border-left: 2px solid var(--hair); max-width: 72ch; line-height: 1.5; }
+/* quiet buttons: Clear / Unload are operator controls, not the call to action */
+.gradio-container button.sdp-quiet { background: transparent !important; border-color: var(--hair) !important; color: var(--text-light) !important; }
+.gradio-container button.sdp-quiet:hover { border-color: var(--fg) !important; color: var(--fg) !important; }
 
 /* status line */
 .sdp-status { display: flex; gap: 10px; align-items: center; color: var(--muted); font-size: var(--fs-small); min-height: 22px; margin: 6px 0; }
@@ -211,6 +226,11 @@ body, .gradio-container, gradio-app {
 .sdp-card.skel .sk.t { height: 16px; width: 60%; } .sdp-card.skel .sk.s { height: 10px; width: 40%; margin-top: 6px; }
 .sdp-card.skel .sk.bar { height: 6px; width: 100%; margin-top: 10px; } .sdp-card.skel .sk.ring { width: 56px; height: 56px; border-radius: 50%; }
 .sdp-card.skel .state { font-size: var(--fs-small); color: var(--muted); margin-top: auto; }
+.sdp-grid.idle .sdp-card.skel .sk { animation: none; background: var(--chip-bg); }
+.sdp-grid.idle .sdp-card.skel .sk.bar:nth-of-type(n+3) { display: none; }
+.sdp-grid.idle .sdp-card.skel .sk.ring { width: 36px; height: 36px; }
+.sdp-grid.idle .sdp-card.skel { padding-bottom: 10px; }
+.sdp-grid.idle { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
 
 /* comparison */
 .sdp-compare { background: var(--card-bg); border: var(--hairline) solid var(--hair); border-radius: var(--sr-radius); padding: 16px 18px; display: grid; gap: 16px; }
@@ -249,6 +269,7 @@ body, .gradio-container, gradio-app {
 .sdp-footer .logo { width: 12px; height: 19px; vertical-align: -4px; margin-right: 6px; }
 .sdp-footer .sep { color: var(--hair); }
 
+@media (max-width: 480px) { .sdp-header .tag { display: none; } }
 @media (max-width: 720px) {
   .sdp-grid { grid-template-columns: 1fr; }
   .sdp-strip .srow, .sdp-strip .heads { grid-template-columns: 1fr; }
@@ -283,7 +304,7 @@ body, .gradio-container, gradio-app {
 .sdp-section h2 { font-size: 1.1rem; }
 .sdp-section .sub, .sdp-status, .sdp-foot, .sdp-legend, .sdp-bars .p, .sdp-compute .k, .sdp-ring .lbl, .sdp-strip .heads, .sdp-mult .ml, .sdp-badge .s {
   font-family: var(--sr-mono); }
-.sdp-section .sub { font-size: var(--fs-caption); letter-spacing: var(--tracking-caption); text-transform: uppercase; }
+.sdp-section .sub { font-family: var(--sr-text); font-size: var(--fs-small); letter-spacing: 0; text-transform: none; }
 .sdp-status { font-size: var(--fs-small); }
 
 /* blocks: flat, hairline, page surface */
