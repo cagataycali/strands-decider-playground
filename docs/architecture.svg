@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 400" width="960" height="400" role="img" aria-label="Strands Decider Playground architecture">
+  <style>
+    text { font-family: "JetBrains Mono", ui-monospace, Menlo, monospace; font-size: 12px; fill: #c8c8c8; }
+    .h { font-size: 13px; font-weight: 600; fill: #ffffff; }
+    .k { font-size: 10.5px; fill: #8a8a8a; letter-spacing: .04em; }
+    .g { fill: #00cc60; }
+    .box { fill: none; stroke: #c8c8c8; stroke-width: 1; rx: 8; }
+    .group { fill: none; stroke: #666; stroke-width: 1; stroke-dasharray: 4 4; rx: 8; }
+    .edge { fill: none; stroke: #c8c8c8; stroke-width: 1; }
+    .signal { fill: none; stroke: #00cc60; stroke-width: 1.5; }
+    .pill { fill: #00cc60; }
+    .pillt { fill: #0a0a0a; font-size: 10.5px; font-weight: 600; }
+  </style>
+  <rect width="960" height="400" fill="#0a0a0a"/>
+
+  <!-- Hugging Face -->
+  <text x="24" y="30" class="k">HUGGING FACE</text>
+  <rect x="24" y="40" width="200" height="118" class="group"/>
+  <rect x="40" y="56" width="168" height="38" class="box"/>
+  <text x="56" y="73" class="h">StrandsAgents org</text>
+  <text x="56" y="87">public strands-decider-* repos</text>
+  <rect x="40" y="104" width="168" height="38" class="box"/>
+  <text x="56" y="121" class="h">each repo's own files</text>
+  <text x="56" y="135">config · eval/**/summary.json</text>
+
+  <!-- registry -->
+  <text x="276" y="30" class="k">AT START</text>
+  <rect x="276" y="56" width="168" height="86" class="box"/>
+  <text x="292" y="75" class="h">registry.py</text>
+  <text x="292" y="93">lists the org live,</text>
+  <text x="292" y="108">keeps public repos only,</text>
+  <text x="292" y="123">reads config + evals</text>
+  <path class="edge" d="M208 75 H276"/>
+  <path class="edge" d="M208 123 H276"/>
+
+  <!-- one request -->
+  <text x="496" y="30" class="k">ONE REQUEST</text>
+  <rect x="496" y="40" width="440" height="200" class="group"/>
+  <rect x="512" y="56" width="128" height="52" class="box"/>
+  <text x="528" y="75" class="h">app.answer()</text>
+  <text x="528" y="92">state · questions · image</text>
+  <rect x="664" y="56" width="120" height="52" class="box"/>
+  <text x="680" y="75" class="h">runner.py</text>
+  <text x="680" y="92">one lock, per model</text>
+  <rect x="808" y="56" width="112" height="52" class="box"/>
+  <text x="824" y="75" class="h">cache.py</text>
+  <text x="824" y="92">load · evict by base</text>
+  <rect x="664" y="132" width="120" height="52" class="box"/>
+  <text x="680" y="151" class="h">metrics.py</text>
+  <text x="680" y="168">memory · latency · tokens</text>
+  <rect x="808" y="132" width="112" height="52" class="box"/>
+  <text x="824" y="151" class="h">strands_decider</text>
+  <text x="824" y="168">engine.ask(...)</text>
+  <path class="edge" d="M640 82 H664"/>
+  <path class="edge" d="M784 82 H808"/>
+  <path class="edge" d="M724 108 V132"/>
+  <path class="signal" d="M864 108 V132"/>
+  <path class="signal" d="M808 158 H784"/>
+  <text x="512" y="151" class="k">per model:</text>
+  <text x="512" y="167">load or reuse → ask →</text>
+  <text x="512" y="183">measure → one card</text>
+  <text x="512" y="222" class="k">every number on the page is read from the card dict; nothing is recomputed</text>
+  <path class="edge" d="M444 82 H512"/>
+
+  <!-- outputs -->
+  <text x="24" y="282" class="k">RENDERED FROM THE SAME DICT</text>
+  <rect x="24" y="292" width="200" height="72" class="box"/>
+  <text x="40" y="312" class="h">app.py cards</text>
+  <text x="40" y="329">probabilities · confidence ring ·</text>
+  <text x="40" y="344">published evals · compute block</text>
+  <rect x="248" y="292" width="200" height="72" class="box"/>
+  <text x="264" y="312" class="h">viz.py</text>
+  <text x="264" y="329">sum of decisions · multiples ·</text>
+  <text x="264" y="344">confidence vs size · agreement</text>
+  <rect x="472" y="292" width="200" height="72" class="box"/>
+  <text x="488" y="312" class="h">bench/</text>
+  <text x="488" y="329">231 JevBench tasks · run · board ·</text>
+  <text x="488" y="344">common errors</text>
+  <rect x="696" y="292" width="240" height="72" class="box"/>
+  <text x="712" y="312" class="h">landing.py · examples.py</text>
+  <text x="712" y="329">hero · how to use · model row</text>
+  <text x="712" y="344">clickable examples</text>
+  <path class="signal" d="M576 240 V266 H124 V292"/>
+  <path class="signal" d="M576 266 H348 V292"/>
+  <path class="signal" d="M576 266 V292"/>
+  <path class="edge" d="M576 266 H816 V292"/>
+  <rect x="546" y="250" width="60" height="16" class="pill" rx="8"/>
+  <text x="576" y="262" class="pillt" text-anchor="middle">card dict</text>
+</svg>
