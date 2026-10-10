@@ -42,6 +42,7 @@ _STATE_RE = re.compile(r'class="sdb-status-t">(.*?)<span class="sdb-dim">', re.S
 
 
 def _client(space: str):
+    """gradio_client for the Space, authenticated with the local Hub token."""
     from gradio_client import Client
     from huggingface_hub import get_token
 
@@ -76,6 +77,7 @@ def model_names(space: str) -> list[str]:
 
 
 def start(space: str, scope: str, model: str) -> dict:
+    """Press the Space's Run button over the API; returns the parsed status (run id, progress)."""
     c = _client(space)
     board, est = c.predict(scope, model, api_name="/_bench_start")
     st = _status(board)
@@ -84,12 +86,14 @@ def start(space: str, scope: str, model: str) -> dict:
 
 
 def tick(space: str) -> dict:
+    """One board poll; returns the parsed status."""
     c = _client(space)
     board, _errors = c.predict(False, api_name="/_bench_tick")
     return _status(board)
 
 
 def _log(*a):
+    """Unbuffered print, so progress shows under nohup."""
     print(*a, flush=True)
 
 
@@ -224,6 +228,7 @@ def vendor_meta(space: str, dataset: str, run_id: str, out: Path, wall_s: float 
 
 
 def main(argv: list[str] | None = None) -> int:
+    """CLI entry point (see the module docstring for the commands)."""
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("cmd", choices=["start", "tick", "wait", "fetch", "run", "vendor", "baseline"])
     ap.add_argument("run_id", nargs="?")
